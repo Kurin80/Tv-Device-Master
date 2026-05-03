@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useGetMe, getGetMeQueryKey, UserProfile } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -14,6 +15,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const token = localStorage.getItem('mdm_token');
 
   const { data: meResponse, isLoading: isMeLoading, isError: isMeError } = useGetMe({
@@ -25,22 +27,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = useCallback((newToken: string) => {
+    // Clear stale cache from any previous session before setting new token
+    queryClient.clear();
     localStorage.setItem('mdm_token', newToken);
     setLocation('/dashboard');
-  }, [setLocation]);
+  }, [setLocation, queryClient]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('mdm_token');
+    // Clear all cached tenant data to prevent cross-session data leakage
+    queryClient.clear();
     setLocation('/login');
-  }, [setLocation]);
+  }, [setLocation, queryClient]);
 
-  // If token is present but /auth/me fails (expired/invalid), clear token and redirect
+  // If token is present but /auth/me fails (expired or invalid), clear token + cache and redirect
   useEffect(() => {
     if (token && isMeError) {
       localStorage.removeItem('mdm_token');
+      queryClient.clear();
       setLocation('/login');
     }
-  }, [token, isMeError, setLocation]);
+  }, [token, isMeError, setLocation, queryClient]);
 
   // If no token, redirect to login (unless already on public pages)
   useEffect(() => {

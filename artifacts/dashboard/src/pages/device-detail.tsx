@@ -41,6 +41,8 @@ export default function DeviceDetail() {
 
   const [openAppDialogOpen, setOpenAppDialogOpen] = useState(false);
   const [openAppPackage, setOpenAppPackage] = useState("");
+  const [kioskDialogOpen, setKioskDialogOpen] = useState(false);
+  const [kioskPackage, setKioskPackage] = useState("");
 
   const { data: device, isLoading } = useGetDevice(id, { 
     query: { enabled: !!id, queryKey: getGetDeviceQueryKey(id) } 
@@ -139,6 +141,13 @@ export default function DeviceDetail() {
     handleCommand('open_app', openAppPackage.trim());
     setOpenAppDialogOpen(false);
     setOpenAppPackage("");
+  };
+
+  const handleKioskEnable = () => {
+    if (!kioskPackage.trim()) return;
+    handleCommand('kiosk_enable', kioskPackage.trim());
+    setKioskDialogOpen(false);
+    setKioskPackage("");
   };
 
   const getStatusColor = (status: string) => {
@@ -241,7 +250,7 @@ export default function DeviceDetail() {
                   <Button variant="secondary" className="justify-start font-mono text-xs" onClick={() => handleCommand('back')} disabled={device.status !== 'online'} data-testid="cmd-back">
                     <ArrowLeft className="w-3 h-3 mr-2" /> Atrás
                   </Button>
-                  <Button variant="secondary" className="justify-start font-mono text-xs" onClick={() => handleCommand('kiosk_enable')} disabled={device.status !== 'online'} data-testid="cmd-kiosk-enable">
+                  <Button variant="secondary" className="justify-start font-mono text-xs" onClick={() => setKioskDialogOpen(true)} disabled={device.status !== 'online'} data-testid="cmd-kiosk-enable">
                     <Lock className="w-3 h-3 mr-2 text-amber-500" /> Activar Kiosco
                   </Button>
                   <Button variant="secondary" className="justify-start font-mono text-xs" onClick={() => handleCommand('kiosk_disable')} disabled={device.status !== 'online'} data-testid="cmd-kiosk-disable">
@@ -382,6 +391,39 @@ export default function DeviceDetail() {
           </div>
         </div>
       </div>
+
+      {/* Diálogo: Activar modo kiosco */}
+      <Dialog open={kioskDialogOpen} onOpenChange={setKioskDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="font-mono uppercase flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-500" />
+              Activar Modo Kiosco
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-sm text-muted-foreground font-mono">
+              Ingresa el nombre del paquete de la aplicación que se fijará en modo kiosco.
+            </p>
+            <Input
+              placeholder="com.example.miapp"
+              className="font-mono"
+              value={kioskPackage}
+              onChange={(e) => setKioskPackage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleKioskEnable()}
+              data-testid="input-kiosk-package"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setKioskDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleKioskEnable} disabled={!kioskPackage.trim() || sendCommand.isPending} data-testid="button-confirm-kiosk-enable">
+              <Lock className="w-4 h-4 mr-2" />
+              Activar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Diálogo: Abrir App por nombre de paquete */}
       <Dialog open={openAppDialogOpen} onOpenChange={setOpenAppDialogOpen}>
