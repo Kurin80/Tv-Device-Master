@@ -23,7 +23,28 @@ Plataforma MDM (Mobile Device Management) completa tipo SaaS multiempresa para g
 ## Artifacts
 
 - **API Server** (`artifacts/api-server`) — Backend Express con WebSockets, ADB, multi-tenant
+- **MDM Dashboard** (`artifacts/dashboard`) — React+Vite web dashboard (previewPath `/`, port 23183)
 - **Canvas** (`artifacts/mockup-sandbox`) — Sandbox para prototipos UI
+
+## Dashboard (Web Frontend)
+
+Stack: React + Vite + Tailwind CSS + Radix UI + TanStack Query + wouter
+
+- **Auth**: `setAuthTokenGetter(() => localStorage.getItem("mdm_token"))` in `main.tsx` wires auth token to all API hooks
+- **API hooks**: imported from `@workspace/api-client-react` (Orval-generated from OpenAPI spec)
+- **WebSocket**: `src/lib/socket.ts` — connects to `window.location.origin` with path `/socket.io`
+- **Routing**: wouter with `base={import.meta.env.BASE_URL}`
+- **Pages**: `/login`, `/register`, `/dashboard`, `/devices`, `/devices/:id`, `/logs`, `/users` (admin), `/schedule`
+- **Theme**: dark control-room aesthetic (cyan/teal accent, dark navy background)
+
+### Dashboard Pages
+- `/login` & `/register` — JWT auth flows
+- `/dashboard` — fleet overview with device stats, recent logs
+- `/devices` — searchable device list, CRUD modals
+- `/devices/:id` — device detail, ADB command panel, real-time logs via WebSocket
+- `/logs` — tenant-wide audit log table
+- `/users` — user management (admin only)
+- `/schedule` — cron-based scheduled tasks CRUD
 
 ## Key Commands
 

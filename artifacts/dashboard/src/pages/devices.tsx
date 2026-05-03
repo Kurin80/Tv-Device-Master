@@ -1,0 +1,264 @@
+import { useState } from "react";
+import { useGetDevices, useCreateDevice, useDeleteDevice, useUpdateDevice } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Layout } from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Plus, Search, MoreVertical, Trash, Edit, MonitorSmartphone, Wifi, WifiOff, HelpCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+import { formatDistanceToNow } from "date-fns";
+
+const deviceSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  ip: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, "Invalid IP address"),
+});
+
+export default function Devices() {
+  const [search, setSearch] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<string | null>(null);
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  const { data: devices, isLoading } = useGetDevices();
+  const createDevice = useCreateDevice();
+  const updateDevice = useUpdateDevice();
+  const deleteDevice = useDeleteDevice();
+
+  const form = useForm<z.infer<typeof deviceSchema>>({
+    resolver: zodResolver(deviceSchema),
+    defaultValues: { name: "", ip: "" },
+  });
+
+  const filteredDevices = devices?.filter(d => 
+    d.name.toLowerCase().includes(search.toLowerCase()) || 
+    d.ip.includes(search)
+  );
+
+  const onSubmit = (values: z.infer<typeof deviceSchema>) => {
+    if (editingDevice) {
+      updateDevice.mutate(
+        { id: editingDevice, data: values },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/devices"] });
+            toast({ title: "Device updated successfully" });
+            setIsCreateOpen(false);
+            setEditingDevice(null);
+            form.reset();
+          },
+          onError: () => toast({ variant: "destructive", title: "Failed to update device" })
+        }
+      );
+    } else {
+      createDevice.mutate(
+        { data: values },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/devices"] });
+            toast({ title: "Device provisioned successfully" });
+            setIsCreateOpen(false);
+            form.reset();
+          },
+          onError: () => toast({ variant: "destructive", title: "Failed to provision device" })
+        }
+      );
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Are you sure you want to decommission this device?")) {
+      deleteDevice.mutate(
+        { id },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/devices"] });
+            toast({ title: "Device decommissioned" });
+          },
+          onError: () => toast({ variant: "destructive", title: "Failed to decommission device" })
+        }
+      );
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'online': 
+        return <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-mono"><Wifi className="w-3 h-3 mr-1" /> ONLINE</Badge>;
+      case 'offline': 
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20 font-mono"><WifiOff className="w-3 h-3 mr-1" /> OFFLINE</Badge>;
+      default: 
+        return <Badge className="bg-muted text-muted-foreground border-border font-mono"><HelpCircle className="w-3 h-3 mr-1" /> UNKNOWN</Badge>;
+    }
+  };
+
+  return (
+    <Layout>
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Device Fleet</h1>
+            <p className="text-muted-foreground font-mono text-sm">Manage and monitor Android TV endpoints</p>
+          </div>
+          
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (!open) {
+              setEditingDevice(null);
+              form.reset();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="font-mono uppercase tracking-wider" data-testid="button-add-device">
+                <Plus className="w-4 h-4 mr-2" />
+                Provision Node
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] bg-card border-border">
+              <DialogHeader>
+                <DialogTitle className="font-mono uppercase">{editingDevice ? 'Configure Node' : 'Provision New Node'}</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Node Designation</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Lobby Display 1" className="font-mono" {...field} data-testid="input-device-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="ip"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">IPv4 Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="192.168.1.100" className="font-mono" {...field} data-testid="input-device-ip" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={createDevice.isPending || updateDevice.isPending} data-testid="button-save-device">
+                      {createDevice.isPending || updateDevice.isPending ? 'Processing...' : 'Execute'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="flex items-center space-x-2 bg-card border border-border rounded-md px-3 py-2 w-full max-w-md">
+          <Search className="w-4 h-4 text-muted-foreground" />
+          <Input 
+            className="border-0 focus-visible:ring-0 px-0 h-auto font-mono text-sm bg-transparent" 
+            placeholder="Search by designation or IP..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            data-testid="input-search-devices"
+          />
+        </div>
+
+        <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+          <Table>
+            <TableHeader className="bg-secondary/50">
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="font-mono text-xs uppercase tracking-wider w-[300px]">Designation</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Status</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">IP Address</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Last Seen</TableHead>
+                <TableHead className="text-right w-[100px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-border">
+                    <TableCell><div className="h-5 w-32 bg-muted animate-pulse rounded" /></TableCell>
+                    <TableCell><div className="h-5 w-20 bg-muted animate-pulse rounded" /></TableCell>
+                    <TableCell><div className="h-5 w-24 bg-muted animate-pulse rounded" /></TableCell>
+                    <TableCell><div className="h-5 w-24 bg-muted animate-pulse rounded" /></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredDevices?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground font-mono">
+                    NO NODES FOUND
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredDevices?.map((device) => (
+                  <TableRow key={device.id} className="border-border hover:bg-secondary/30 transition-colors group" data-testid={`row-device-${device.id}`}>
+                    <TableCell className="font-medium">
+                      <Link href={`/devices/${device.id}`} className="flex items-center gap-2 hover:text-primary transition-colors">
+                        <MonitorSmartphone className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                        {device.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(device.status)}</TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{device.ip}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {device.lastSeen ? formatDistanceToNow(new Date(device.lastSeen), { addSuffix: true }) : 'Never'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0" data-testid={`button-device-menu-${device.id}`}>
+                            <span className="sr-only">Open menu</span>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-card border-border font-mono text-sm">
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setEditingDevice(device.id);
+                              form.reset({ name: device.name, ip: device.ip });
+                              setIsCreateOpen(true);
+                            }}
+                            className="cursor-pointer focus:bg-secondary"
+                            data-testid={`menu-edit-${device.id}`}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Configure
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(device.id)}
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                            data-testid={`menu-delete-${device.id}`}
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Decommission
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </Layout>
+  );
+}
