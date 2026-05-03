@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "MDM TV Agent",
+    "slug": "mdm-tv-agent",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "platforms": ["android"],
+    "android": {
+      "package": "com.mdm.tvagent",
+      "isTV": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MDM TV Agent to access camera for QR code scanning."
+        }
+      ]
+    ],
+    "scheme": "mdm-tv-agent"
+  }
+}
