@@ -53,6 +53,7 @@ router.post("/devices", requireAuth, apiLimiter, async (req: Request, res: Respo
 
   await db.insert(logsTable).values({
     deviceId: device!.id,
+    tenantId,
     message: `Dispositivo "${name}" registrado con IP ${ip}`,
     level: "info",
   });

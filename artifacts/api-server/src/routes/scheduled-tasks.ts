@@ -74,9 +74,20 @@ router.put("/scheduled-tasks/:id", requireAuth, requireAdmin, apiLimiter, async 
     return;
   }
 
+  // Validate that the new deviceId (if supplied) belongs to this tenant
+  if (parsed.data.deviceId) {
+    const [device] = await db.select({ id: devicesTable.id }).from(devicesTable)
+      .where(and(eq(devicesTable.id, parsed.data.deviceId), eq(devicesTable.tenantId, tenantId)))
+      .limit(1);
+    if (!device) {
+      res.status(404).json({ error: "Dispositivo no encontrado" });
+      return;
+    }
+  }
+
   const [updated] = await db.update(scheduledTasksTable)
     .set(parsed.data)
-    .where(eq(scheduledTasksTable.id, id))
+    .where(and(eq(scheduledTasksTable.id, id), eq(scheduledTasksTable.tenantId, tenantId)))
     .returning();
 
   cancelTask(updated!.id);

@@ -30,5 +30,4 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
-JWT_SECRET = "caa5e67159986a275ea33d544832f5a98452f2b67b829d69e6048e0fc6fe8c52f68319f4b618db6c9b0492f6a65f6daa86c2b7b13f1936d6c21e84ddeddb902c"
 ADB_SIMULATION = "true"

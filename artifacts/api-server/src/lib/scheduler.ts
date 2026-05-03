@@ -21,7 +21,10 @@ export function scheduleTask(task: ScheduledTask): void {
 
     if (!task.deviceId) return;
 
-    const [device] = await db.select().from(devicesTable).where(eq(devicesTable.id, task.deviceId)).limit(1);
+    // Always filter by both id AND tenantId to prevent cross-tenant command execution
+    const [device] = await db.select().from(devicesTable)
+      .where(and(eq(devicesTable.id, task.deviceId), eq(devicesTable.tenantId, task.tenantId)))
+      .limit(1);
     if (!device) return;
 
     let result: adb.AdbResult;
