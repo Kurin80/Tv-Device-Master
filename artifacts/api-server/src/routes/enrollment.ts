@@ -14,7 +14,7 @@ const router: IRouter = Router();
 const ENROLLMENT_EXPIRY = 15 * 60;
 
 const IPV4_REGEX =
-  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$/;
 
 interface EnrollmentTokenPayload {
   type: "enrollment";
@@ -90,35 +90,73 @@ router.post("/devices/enroll", apiLimiter, async (req: Request, res: Response): 
 
   const { tenantId } = payload;
 
-  // Prevent duplicate registration: same IP within the same tenant
+  // Prevent duplicate registration: return existing device idempotently
   const [existing] = await db
-    .select({ id: devicesTable.id })
+    .select()
     .from(devicesTable)
     .where(and(eq(devicesTable.ip, ip), eq(devicesTable.tenantId, tenantId)))
     .limit(1);
 
   if (existing) {
-    res.status(409).json({
-      error: "Ya existe un dispositivo con esta IP en tu organización",
-      deviceId: existing.id,
-    });
+    if (existing.name !== name) {
+      const [updated] = await db
+        .update(devicesTable)
+        .set({ name })
+        .where(eq(devicesTable.id, existing.id))
+        .returning();
+
+      await db.insert(logsTable).values({
+        deviceId: existing.id,
+        tenantId,
+        message: `Dispositivo re-inscrito con IP ${ip}; nombre actualizado a "${name}"`,
+        level: "info",
+      });
+
+      const io = getIo();
+      if (io) {
+        io.to(`tenant:${tenantId}`).emit("device:enrolled", { device: updated });
+      }
+
+      res.status(200).json(updated);
+    } else {
+      res.status(200).json(existing);
+    }
     return;
   }
 
   // Generate a unique token the TV agent will use to authenticate every request
   const deviceToken = randomUUID();
 
-  const [device] = await db
-    .insert(devicesTable)
-    .values({ name, ip, tenantId, status: "unknown", deviceToken })
-    .returning();
+  let device: typeof devicesTable.$inferSelect;
+  let isNew = true;
 
-  await db.insert(logsTable).values({
-    deviceId: device!.id,
-    tenantId,
-    message: `Dispositivo "${name}" inscrito automáticamente con IP ${ip}`,
-    level: "info",
-  });
+  try {
+    const [inserted] = await db
+      .insert(devicesTable)
+      .values({ name, ip, tenantId, status: "unknown", deviceToken })
+      .returning();
+    device = inserted!;
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string };
+    if (pgErr?.code !== "23505") throw err;
+    const [race] = await db
+      .select()
+      .from(devicesTable)
+      .where(and(eq(devicesTable.tenantId, tenantId), eq(devicesTable.ip, ip)))
+      .limit(1);
+    if (!race) throw err;
+    device = race;
+    isNew = false;
+  }
+
+  if (isNew) {
+    await db.insert(logsTable).values({
+      deviceId: device.id,
+      tenantId,
+      message: `Dispositivo "${name}" inscrito automáticamente con IP ${ip}`,
+      level: "info",
+    });
+  }
 
   const io = getIo();
   if (io) {
@@ -126,7 +164,7 @@ router.post("/devices/enroll", apiLimiter, async (req: Request, res: Response): 
   }
 
   // Return the full device record — the TV agent must persist deviceToken and id
-  res.status(201).json(device);
+  res.status(isNew ? 201 : 200).json(device);
 });
 
 export default router;

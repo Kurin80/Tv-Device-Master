@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { tenantsTable } from "./tenants";
@@ -16,7 +16,9 @@ export const devicesTable = pgTable("devices", {
   // Token used by the TV agent to authenticate over the internet.
   // Generated at enrollment, persisted in the agent app's storage.
   deviceToken: text("device_token").unique(),
-});
+}, (t) => [
+  uniqueIndex("devices_tenant_ip_unique").on(t.tenantId, t.ip),
+]);
 
 export const insertDeviceSchema = createInsertSchema(devicesTable).omit({ id: true, createdAt: true, lastSeen: true, status: true, deviceToken: true });
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
