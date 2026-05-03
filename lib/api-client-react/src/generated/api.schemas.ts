@@ -126,6 +126,7 @@ export const CommandRequestAction = {
   sync_apps: "sync_apps",
   keyevent: "keyevent",
   kiosk_enable: "kiosk_enable",
+  kiosk_disable: "kiosk_disable",
 } as const;
 
 export interface CommandRequest {

@@ -25,6 +25,7 @@ const commandSchema = z.object({
     "sync_apps",
     "keyevent",
     "kiosk_enable",
+    "kiosk_disable",
   ]),
   param: z.string().optional(),
   keycode: z.number().optional(),
@@ -130,6 +131,9 @@ router.post("/devices/:id/command", requireAuth, commandLimiter, async (req: Req
       case "kiosk_enable":
         if (!param) { result = { success: false, output: "", error: "package_name requerido" }; break; }
         result = await adb.enableKioskMode(device.ip, param);
+        break;
+      case "kiosk_disable":
+        result = await adb.disableKioskMode(device.ip);
         break;
       default:
         result = { success: false, output: "", error: "Acción no reconocida" };

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useGetDevices, useCreateDevice, useDeleteDevice, useUpdateDevice } from "@workspace/api-client-react";
+import { useState, useEffect } from "react";
+import { useGetDevices, useCreateDevice, useDeleteDevice, useUpdateDevice, getGetDevicesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,12 @@ import { Plus, Search, MoreVertical, Trash, Edit, MonitorSmartphone, Wifi, WifiO
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import { socket } from "@/lib/socket";
 
 const deviceSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  ip: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, "Invalid IP address"),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  ip: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, "Dirección IP inválida"),
 });
 
 export default function Devices() {
@@ -34,6 +36,17 @@ export default function Devices() {
   const createDevice = useCreateDevice();
   const updateDevice = useUpdateDevice();
   const deleteDevice = useDeleteDevice();
+
+  useEffect(() => {
+    socket.connect();
+    socket.on('device:status', () => {
+      queryClient.invalidateQueries({ queryKey: getGetDevicesQueryKey() });
+    });
+    return () => {
+      socket.off('device:status');
+      socket.disconnect();
+    };
+  }, [queryClient]);
 
   const form = useForm<z.infer<typeof deviceSchema>>({
     resolver: zodResolver(deviceSchema),
@@ -51,13 +64,13 @@ export default function Devices() {
         { id: editingDevice, data: values },
         {
           onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/devices"] });
-            toast({ title: "Device updated successfully" });
+            queryClient.invalidateQueries({ queryKey: getGetDevicesQueryKey() });
+            toast({ title: "Dispositivo actualizado correctamente" });
             setIsCreateOpen(false);
             setEditingDevice(null);
             form.reset();
           },
-          onError: () => toast({ variant: "destructive", title: "Failed to update device" })
+          onError: () => toast({ variant: "destructive", title: "Error al actualizar dispositivo" })
         }
       );
     } else {
@@ -65,27 +78,27 @@ export default function Devices() {
         { data: values },
         {
           onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/devices"] });
-            toast({ title: "Device provisioned successfully" });
+            queryClient.invalidateQueries({ queryKey: getGetDevicesQueryKey() });
+            toast({ title: "Dispositivo registrado correctamente" });
             setIsCreateOpen(false);
             form.reset();
           },
-          onError: () => toast({ variant: "destructive", title: "Failed to provision device" })
+          onError: () => toast({ variant: "destructive", title: "Error al registrar dispositivo" })
         }
       );
     }
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to decommission this device?")) {
+    if (confirm("¿Estás seguro de que deseas dar de baja este dispositivo?")) {
       deleteDevice.mutate(
         { id },
         {
           onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/devices"] });
-            toast({ title: "Device decommissioned" });
+            queryClient.invalidateQueries({ queryKey: getGetDevicesQueryKey() });
+            toast({ title: "Dispositivo dado de baja" });
           },
-          onError: () => toast({ variant: "destructive", title: "Failed to decommission device" })
+          onError: () => toast({ variant: "destructive", title: "Error al dar de baja el dispositivo" })
         }
       );
     }
@@ -94,11 +107,11 @@ export default function Devices() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'online': 
-        return <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-mono"><Wifi className="w-3 h-3 mr-1" /> ONLINE</Badge>;
+        return <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-mono"><Wifi className="w-3 h-3 mr-1" /> EN LÍNEA</Badge>;
       case 'offline': 
-        return <Badge className="bg-destructive/10 text-destructive border-destructive/20 font-mono"><WifiOff className="w-3 h-3 mr-1" /> OFFLINE</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20 font-mono"><WifiOff className="w-3 h-3 mr-1" /> DESCONECTADO</Badge>;
       default: 
-        return <Badge className="bg-muted text-muted-foreground border-border font-mono"><HelpCircle className="w-3 h-3 mr-1" /> UNKNOWN</Badge>;
+        return <Badge className="bg-muted text-muted-foreground border-border font-mono"><HelpCircle className="w-3 h-3 mr-1" /> DESCONOCIDO</Badge>;
     }
   };
 
@@ -107,8 +120,8 @@ export default function Devices() {
       <div className="space-y-6 max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Device Fleet</h1>
-            <p className="text-muted-foreground font-mono text-sm">Manage and monitor Android TV endpoints</p>
+            <h1 className="text-3xl font-bold tracking-tight">Flota de Dispositivos</h1>
+            <p className="text-muted-foreground font-mono text-sm">Gestionar y monitorear equipos Android TV</p>
           </div>
           
           <Dialog open={isCreateOpen} onOpenChange={(open) => {
@@ -121,12 +134,12 @@ export default function Devices() {
             <DialogTrigger asChild>
               <Button className="font-mono uppercase tracking-wider" data-testid="button-add-device">
                 <Plus className="w-4 h-4 mr-2" />
-                Provision Node
+                Registrar Equipo
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-card border-border">
               <DialogHeader>
-                <DialogTitle className="font-mono uppercase">{editingDevice ? 'Configure Node' : 'Provision New Node'}</DialogTitle>
+                <DialogTitle className="font-mono uppercase">{editingDevice ? 'Editar Equipo' : 'Registrar Nuevo Equipo'}</DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
@@ -135,9 +148,9 @@ export default function Devices() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Node Designation</FormLabel>
+                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Nombre del Equipo</FormLabel>
                         <FormControl>
-                          <Input placeholder="Lobby Display 1" className="font-mono" {...field} data-testid="input-device-name" />
+                          <Input placeholder="Pantalla Lobby 1" className="font-mono" {...field} data-testid="input-device-name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -148,7 +161,7 @@ export default function Devices() {
                     name="ip"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">IPv4 Address</FormLabel>
+                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Dirección IPv4</FormLabel>
                         <FormControl>
                           <Input placeholder="192.168.1.100" className="font-mono" {...field} data-testid="input-device-ip" />
                         </FormControl>
@@ -158,7 +171,7 @@ export default function Devices() {
                   />
                   <DialogFooter>
                     <Button type="submit" disabled={createDevice.isPending || updateDevice.isPending} data-testid="button-save-device">
-                      {createDevice.isPending || updateDevice.isPending ? 'Processing...' : 'Execute'}
+                      {createDevice.isPending || updateDevice.isPending ? 'Procesando...' : 'Guardar'}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -171,7 +184,7 @@ export default function Devices() {
           <Search className="w-4 h-4 text-muted-foreground" />
           <Input 
             className="border-0 focus-visible:ring-0 px-0 h-auto font-mono text-sm bg-transparent" 
-            placeholder="Search by designation or IP..." 
+            placeholder="Buscar por nombre o IP..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             data-testid="input-search-devices"
@@ -182,10 +195,10 @@ export default function Devices() {
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="font-mono text-xs uppercase tracking-wider w-[300px]">Designation</TableHead>
-                <TableHead className="font-mono text-xs uppercase tracking-wider">Status</TableHead>
-                <TableHead className="font-mono text-xs uppercase tracking-wider">IP Address</TableHead>
-                <TableHead className="font-mono text-xs uppercase tracking-wider">Last Seen</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider w-[300px]">Nombre</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Estado</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Dirección IP</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Última Conexión</TableHead>
                 <TableHead className="text-right w-[100px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -203,7 +216,7 @@ export default function Devices() {
               ) : filteredDevices?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-32 text-center text-muted-foreground font-mono">
-                    NO NODES FOUND
+                    SIN DISPOSITIVOS
                   </TableCell>
                 </TableRow>
               ) : (
@@ -218,13 +231,13 @@ export default function Devices() {
                     <TableCell>{getStatusBadge(device.status)}</TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">{device.ip}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {device.lastSeen ? formatDistanceToNow(new Date(device.lastSeen), { addSuffix: true }) : 'Never'}
+                      {device.lastSeen ? formatDistanceToNow(new Date(device.lastSeen), { addSuffix: true, locale: es }) : 'Nunca'}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0" data-testid={`button-device-menu-${device.id}`}>
-                            <span className="sr-only">Open menu</span>
+                            <span className="sr-only">Abrir menú</span>
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -239,7 +252,7 @@ export default function Devices() {
                             data-testid={`menu-edit-${device.id}`}
                           >
                             <Edit className="mr-2 h-4 w-4" />
-                            Configure
+                            Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => handleDelete(device.id)}
@@ -247,7 +260,7 @@ export default function Devices() {
                             data-testid={`menu-delete-${device.id}`}
                           >
                             <Trash className="mr-2 h-4 w-4" />
-                            Decommission
+                            Dar de baja
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

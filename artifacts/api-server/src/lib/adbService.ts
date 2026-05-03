@@ -179,6 +179,12 @@ export async function enableKioskMode(ip: string, packageName: string): Promise<
   return runAdb(`-s ${safeIp} shell settings put secure enabled_accessibility_services ${safePkg}`);
 }
 
+export async function disableKioskMode(ip: string): Promise<AdbResult> {
+  const safeIp = sanitizeIp(ip);
+  await runAdb(`connect ${safeIp}`);
+  return runAdb(`-s ${safeIp} shell settings put secure enabled_accessibility_services ''`);
+}
+
 export async function checkConnection(ip: string): Promise<boolean> {
   const safeIp = sanitizeIp(ip);
   if (SIMULATION_MODE) return true;

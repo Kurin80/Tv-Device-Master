@@ -19,14 +19,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Devices', href: '/devices', icon: MonitorSmartphone },
-    { name: 'Logs', href: '/logs', icon: Terminal },
-    { name: 'Schedule', href: '/schedule', icon: CalendarClock },
+    { name: 'Panel', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Dispositivos', href: '/devices', icon: MonitorSmartphone },
+    { name: 'Registros', href: '/logs', icon: Terminal },
+    { name: 'Rutinas', href: '/schedule', icon: CalendarClock },
   ];
 
   if (user?.role === 'admin') {
-    navigation.push({ name: 'Users', href: '/users', icon: Users });
+    navigation.push({ name: 'Usuarios', href: '/users', icon: Users });
   }
 
   const NavLinks = () => (
@@ -55,7 +55,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full bg-background flex-col md:flex-row">
-      {/* Mobile Header */}
+      {/* Cabecera móvil */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
         <div className="flex items-center gap-2 font-bold text-primary">
           <MonitorSmartphone className="h-5 w-5" />
@@ -89,14 +89,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 data-testid="button-logout-mobile"
               >
                 <LogOut className="h-4 w-4" />
-                Sign out
+                Cerrar sesión
               </Button>
             </div>
           </SheetContent>
         </Sheet>
       </div>
 
-      {/* Desktop Sidebar */}
+      {/* Barra lateral escritorio */}
       <div className="hidden md:flex w-64 flex-col bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <div className="flex items-center gap-2 font-bold text-sidebar-primary text-xl tracking-tight">
@@ -126,12 +126,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             data-testid="button-logout"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            Cerrar sesión
           </Button>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Contenido principal */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}

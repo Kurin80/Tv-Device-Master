@@ -18,8 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Redirect } from "wouter";
 
 const userSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().email("Correo electrónico inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   role: z.enum(["admin", "operator"]),
 });
 
@@ -49,7 +49,7 @@ export default function Users() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
-          toast({ title: "User provisioned successfully" });
+          toast({ title: "Usuario creado correctamente" });
           setIsCreateOpen(false);
           form.reset();
         },
@@ -57,8 +57,8 @@ export default function Users() {
           const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
           toast({ 
             variant: "destructive", 
-            title: "Failed to provision user",
-            description: msg || "Unknown error occurred."
+            title: "Error al crear usuario",
+            description: msg || "Ocurrió un error desconocido."
           });
         }
       }
@@ -67,19 +67,19 @@ export default function Users() {
 
   const handleDelete = (id: string) => {
     if (user?.id === id) {
-      toast({ variant: "destructive", title: "Cannot decommission yourself" });
+      toast({ variant: "destructive", title: "No puedes eliminar tu propia cuenta" });
       return;
     }
     
-    if (confirm("Are you sure you want to revoke access for this operator?")) {
+    if (confirm("¿Estás seguro de que deseas revocar el acceso de este operador?")) {
       deleteUser.mutate(
         { id },
         {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
-            toast({ title: "Operator access revoked" });
+            toast({ title: "Acceso revocado correctamente" });
           },
-          onError: () => toast({ variant: "destructive", title: "Failed to revoke access" })
+          onError: () => toast({ variant: "destructive", title: "Error al revocar acceso" })
         }
       );
     }
@@ -90,8 +90,8 @@ export default function Users() {
       <div className="space-y-6 max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Access Control</h1>
-            <p className="text-muted-foreground font-mono text-sm">Manage operator credentials and clearance</p>
+            <h1 className="text-3xl font-bold tracking-tight">Control de Acceso</h1>
+            <p className="text-muted-foreground font-mono text-sm">Gestionar credenciales y permisos de operadores</p>
           </div>
           
           <Dialog open={isCreateOpen} onOpenChange={(open) => {
@@ -101,12 +101,12 @@ export default function Users() {
             <DialogTrigger asChild>
               <Button className="font-mono uppercase tracking-wider" data-testid="button-add-user">
                 <Plus className="w-4 h-4 mr-2" />
-                Issue Credentials
+                Nuevo Usuario
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-card border-border">
               <DialogHeader>
-                <DialogTitle className="font-mono uppercase">Issue New Credentials</DialogTitle>
+                <DialogTitle className="font-mono uppercase">Crear Nuevo Usuario</DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
@@ -115,9 +115,9 @@ export default function Users() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Operator Email</FormLabel>
+                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Correo Electrónico</FormLabel>
                         <FormControl>
-                          <Input placeholder="operator@demo.com" className="font-mono" {...field} data-testid="input-user-email" />
+                          <Input placeholder="operador@demo.com" className="font-mono" {...field} data-testid="input-user-email" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -128,7 +128,7 @@ export default function Users() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Initial Passcode</FormLabel>
+                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Contraseña Inicial</FormLabel>
                         <FormControl>
                           <Input type="password" placeholder="••••••••" className="font-mono" {...field} data-testid="input-user-password" />
                         </FormControl>
@@ -141,16 +141,16 @@ export default function Users() {
                     name="role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Clearance Level</FormLabel>
+                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Nivel de Acceso</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger className="font-mono">
-                              <SelectValue placeholder="Select clearance" />
+                              <SelectValue placeholder="Seleccionar nivel" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent className="bg-card border-border font-mono">
-                            <SelectItem value="operator">OPERATOR</SelectItem>
-                            <SelectItem value="admin" className="text-primary font-bold">ADMIN</SelectItem>
+                            <SelectItem value="operator">OPERADOR</SelectItem>
+                            <SelectItem value="admin" className="text-primary font-bold">ADMINISTRADOR</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -159,7 +159,7 @@ export default function Users() {
                   />
                   <DialogFooter>
                     <Button type="submit" disabled={createUser.isPending} data-testid="button-save-user">
-                      {createUser.isPending ? 'Processing...' : 'Execute'}
+                      {createUser.isPending ? 'Procesando...' : 'Guardar'}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -172,9 +172,9 @@ export default function Users() {
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="font-mono text-xs uppercase tracking-wider">Operator Identity</TableHead>
-                <TableHead className="font-mono text-xs uppercase tracking-wider">Clearance</TableHead>
-                <TableHead className="font-mono text-xs uppercase tracking-wider">Provisioned</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Operador</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Rol</TableHead>
+                <TableHead className="font-mono text-xs uppercase tracking-wider">Registrado</TableHead>
                 <TableHead className="text-right w-[100px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -191,7 +191,7 @@ export default function Users() {
               ) : users?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-32 text-center text-muted-foreground font-mono">
-                    NO OPERATORS FOUND
+                    SIN OPERADORES
                   </TableCell>
                 </TableRow>
               ) : (
@@ -209,11 +209,11 @@ export default function Users() {
                       <Badge variant="outline" className={`font-mono uppercase text-[10px] ${u.role === 'admin' ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}>
                         {u.role === 'admin' && <ShieldAlert className="w-3 h-3 mr-1" />}
                         {u.role === 'operator' && <UsersIcon className="w-3 h-3 mr-1" />}
-                        {u.role}
+                        {u.role === 'admin' ? 'Admin' : 'Operador'}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">
-                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Unknown'}
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString('es') : 'Desconocido'}
                     </TableCell>
                     <TableCell className="text-right">
                       {user?.id !== u.id && (
@@ -222,7 +222,7 @@ export default function Users() {
                           size="icon"
                           onClick={() => handleDelete(u.id)}
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          title="Revoke Access"
+                          title="Revocar acceso"
                           data-testid={`button-delete-user-${u.id}`}
                         >
                           <Trash className="h-4 w-4" />

@@ -1,8 +1,12 @@
+import { useEffect } from "react";
 import { 
   useGetDevices, 
   useGetAllLogs, 
-  useGetTenant 
+  useGetTenant,
+  getGetDevicesQueryKey,
+  getGetAllLogsQueryKey
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,11 +14,29 @@ import { MonitorSmartphone, Wifi, WifiOff, HelpCircle, Activity, Server, Clock, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import { socket } from "@/lib/socket";
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const { data: tenant, isLoading: isTenantLoading } = useGetTenant();
   const { data: devices, isLoading: isDevicesLoading } = useGetDevices();
   const { data: logs, isLoading: isLogsLoading } = useGetAllLogs({ limit: 5 });
+
+  useEffect(() => {
+    socket.connect();
+    socket.on('device:status', () => {
+      queryClient.invalidateQueries({ queryKey: getGetDevicesQueryKey() });
+    });
+    socket.on('device:log', () => {
+      queryClient.invalidateQueries({ queryKey: getGetAllLogsQueryKey({ limit: 5 }) });
+    });
+    return () => {
+      socket.off('device:status');
+      socket.off('device:log');
+      socket.disconnect();
+    };
+  }, [queryClient]);
 
   const stats = {
     total: devices?.length || 0,
@@ -31,13 +53,11 @@ export default function Dashboard() {
     }
   };
 
-  const getLevelColor = (level: string) => {
-    switch (level.toLowerCase()) {
-      case 'error': return 'text-destructive';
-      case 'warn':
-      case 'warning': return 'text-amber-500';
-      case 'info': return 'text-blue-500';
-      default: return 'text-muted-foreground';
+  const statusLabel = (status: string) => {
+    switch (status) {
+      case 'online': return 'En línea';
+      case 'offline': return 'Desconectado';
+      default: return 'Desconocido';
     }
   };
 
@@ -46,27 +66,27 @@ export default function Dashboard() {
       <div className="space-y-6 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-1" data-testid="text-dashboard-title">Fleet Overview</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-1" data-testid="text-dashboard-title">Resumen de Flota</h1>
             {isTenantLoading ? (
               <Skeleton className="h-5 w-48" />
             ) : (
               <p className="text-muted-foreground font-mono text-sm uppercase tracking-wider">
-                {tenant?.name} <span className="mx-2">•</span> SYS_STATUS: OPERATIONAL
+                {tenant?.name} <span className="mx-2">•</span> ESTADO: OPERATIVO
               </p>
             )}
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono bg-secondary/50 px-3 py-1.5 rounded-md border border-border">
             <Activity className="h-4 w-4 text-primary animate-pulse" />
-            <span>LIVE TELEMETRY</span>
+            <span>TELEMETRÍA EN VIVO</span>
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Estadísticas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-card border-border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between space-y-0 pb-2">
-                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Total Units</p>
+                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Total</p>
                 <Server className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="flex items-baseline gap-2">
@@ -82,7 +102,7 @@ export default function Dashboard() {
             <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between space-y-0 pb-2">
-                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Online</p>
+                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">En línea</p>
                 <Wifi className="h-4 w-4 text-emerald-500" />
               </div>
               <div className="flex items-baseline gap-2">
@@ -98,7 +118,7 @@ export default function Dashboard() {
             <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between space-y-0 pb-2">
-                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Offline</p>
+                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Desconectado</p>
                 <WifiOff className="h-4 w-4 text-destructive" />
               </div>
               <div className="flex items-baseline gap-2">
@@ -114,7 +134,7 @@ export default function Dashboard() {
             <div className="absolute top-0 left-0 w-1 h-full bg-muted-foreground" />
             <CardContent className="p-6">
               <div className="flex items-center justify-between space-y-0 pb-2">
-                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Unknown</p>
+                <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Desconocido</p>
                 <HelpCircle className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="flex items-baseline gap-2">
@@ -129,14 +149,14 @@ export default function Dashboard() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Quick Devices List */}
+          {/* Lista rápida de dispositivos */}
           <Card className="border-border shadow-sm flex flex-col h-[400px]">
             <CardHeader className="py-4 border-b border-border bg-secondary/20 flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-mono uppercase tracking-wider flex items-center gap-2">
                 <MonitorSmartphone className="h-5 w-5 text-primary" />
-                Nodes
+                Equipos
               </CardTitle>
-              <Link href="/devices" className="text-xs text-primary hover:underline font-mono uppercase tracking-wider">View All</Link>
+              <Link href="/devices" className="text-xs text-primary hover:underline font-mono uppercase tracking-wider">Ver todos</Link>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-y-auto">
               {isDevicesLoading ? (
@@ -158,7 +178,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <Badge variant="outline" className={`font-mono uppercase text-[10px] ${getStatusColor(device.status)}`}>
-                          {device.status}
+                          {statusLabel(device.status)}
                         </Badge>
                       </div>
                     </Link>
@@ -167,23 +187,22 @@ export default function Dashboard() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6">
                   <MonitorSmartphone className="h-10 w-10 mb-2 opacity-20" />
-                  <p>No devices provisioned</p>
+                  <p>Sin dispositivos registrados</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Recent Logs */}
+          {/* Registros recientes */}
           <Card className="border-border shadow-sm flex flex-col h-[400px] bg-sidebar border-sidebar-border">
             <CardHeader className="py-4 border-b border-sidebar-border bg-sidebar/80 flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-mono uppercase tracking-wider flex items-center gap-2 text-sidebar-foreground">
                 <Terminal className="h-5 w-5 text-primary" />
-                System Log
+                Registro del Sistema
               </CardTitle>
-              <Link href="/logs" className="text-xs text-primary hover:underline font-mono uppercase tracking-wider">View All</Link>
+              <Link href="/logs" className="text-xs text-primary hover:underline font-mono uppercase tracking-wider">Ver todos</Link>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-y-auto bg-[#0A0E17] font-mono text-sm relative">
-              {/* Scanline effect */}
               <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.2)_51%)] bg-[length:100%_4px] opacity-20 z-10" />
               
               {isLogsLoading ? (
@@ -222,7 +241,7 @@ export default function Dashboard() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 p-6">
                   <Terminal className="h-10 w-10 mb-2 opacity-20" />
-                  <p>Log stream empty</p>
+                  <p>Registro vacío</p>
                 </div>
               )}
             </CardContent>

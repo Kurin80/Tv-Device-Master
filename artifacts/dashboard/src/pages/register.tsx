@@ -18,9 +18,9 @@ import { MonitorSmartphone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
-  tenantName: z.string().min(2, "Organization name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  tenantName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  email: z.string().email("Correo electrónico inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
 });
 
 export default function Register() {
@@ -48,8 +48,8 @@ export default function Register() {
           const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
           toast({
             variant: "destructive",
-            title: "Registration failed",
-            description: msg || "Failed to initialize workspace.",
+            title: "Error al registrar",
+            description: msg || "No se pudo crear la organización.",
           });
         },
       }
@@ -58,7 +58,6 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      {/* Decorative background grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
       
       <div className="w-full max-w-md z-10">
@@ -68,8 +67,8 @@ export default function Register() {
               <MonitorSmartphone className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">Initialize Workspace</h1>
-              <p className="text-xs text-muted-foreground font-mono">NEW TENANT PROVISIONING</p>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">Registrar Organización</h1>
+              <p className="text-xs text-muted-foreground font-mono">NUEVO TENANT</p>
             </div>
           </div>
           
@@ -81,10 +80,10 @@ export default function Register() {
                   name="tenantName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs uppercase tracking-wider font-mono text-muted-foreground">Organization Identifier</FormLabel>
+                      <FormLabel className="text-xs uppercase tracking-wider font-mono text-muted-foreground">Nombre de la Organización</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Acme Corp" 
+                          placeholder="Mi Empresa S.A." 
                           {...field} 
                           className="bg-background font-mono h-11"
                           data-testid="input-tenant-name"
@@ -99,10 +98,10 @@ export default function Register() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs uppercase tracking-wider font-mono text-muted-foreground">Admin Email</FormLabel>
+                      <FormLabel className="text-xs uppercase tracking-wider font-mono text-muted-foreground">Correo del Administrador</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="admin@acme.corp" 
+                          placeholder="admin@empresa.com" 
                           {...field} 
                           className="bg-background font-mono h-11"
                           data-testid="input-email"
@@ -117,7 +116,7 @@ export default function Register() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs uppercase tracking-wider font-mono text-muted-foreground">Admin Passcode</FormLabel>
+                      <FormLabel className="text-xs uppercase tracking-wider font-mono text-muted-foreground">Contraseña</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
@@ -142,10 +141,10 @@ export default function Register() {
                     {registerMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Provisioning...
+                        Registrando...
                       </>
                     ) : (
-                      "Provision Tenant"
+                      "Registrar"
                     )}
                   </Button>
                 </div>
@@ -154,9 +153,9 @@ export default function Register() {
           </div>
           
           <div className="p-4 bg-secondary/50 border-t border-border text-center text-sm">
-            <span className="text-muted-foreground">Existing tenant?</span>{" "}
+            <span className="text-muted-foreground">¿Ya tienes cuenta?</span>{" "}
             <Link href="/login" className="text-primary hover:underline font-medium ml-1" data-testid="link-login">
-              Return to uplink
+              Iniciar sesión
             </Link>
           </div>
         </div>
