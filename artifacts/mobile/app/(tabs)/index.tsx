@@ -140,13 +140,22 @@ export default function DeviceListScreen() {
               {devices ? `${devices.length} dispositivos` : "Cargando..."}
             </Text>
           </View>
-          <Pressable
-            style={({ pressed }) => [styles.logoutBtn, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={logout}
-            testID="button-logout"
-          >
-            <Ionicons name="log-out-outline" size={24} color={colors.mutedForeground} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => router.push("/(tabs)/enroll")}
+              testID="button-enroll"
+            >
+              <Ionicons name="qr-code-outline" size={24} color={colors.mutedForeground} />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.logoutBtn, { opacity: pressed ? 0.6 : 1 }]}
+              onPress={logout}
+              testID="button-logout"
+            >
+              <Ionicons name="log-out-outline" size={24} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -226,6 +235,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
     letterSpacing: 0.5,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  iconBtn: {
+    padding: 8,
   },
   logoutBtn: {
     padding: 8,

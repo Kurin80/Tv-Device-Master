@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { useGetDevices, useCreateDevice, useDeleteDevice, useUpdateDevice, getGetDevicesQueryKey } from "@workspace/api-client-react";
+import { useState, useEffect, useCallback } from "react";
+import { useGetDevices, useCreateDevice, useDeleteDevice, useUpdateDevice, getGetDevicesQueryKey, getEnrollmentToken } from "@workspace/api-client-react";
+import type { EnrollmentTokenResponse } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -13,17 +14,124 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Search, MoreVertical, Trash, Edit, MonitorSmartphone, Wifi, WifiOff, HelpCircle, Filter } from "lucide-react";
+import { Plus, Search, MoreVertical, Trash, Edit, MonitorSmartphone, Wifi, WifiOff, HelpCircle, Filter, QrCode, RefreshCw, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
 import { socket } from "@/lib/socket";
+import { QRCodeSVG } from "qrcode.react";
 
 const deviceSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   ip: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, "Dirección IP inválida"),
 });
+
+function EnrollmentQrDialog() {
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [enrollment, setEnrollment] = useState<EnrollmentTokenResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  const fetchToken = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getEnrollmentToken();
+      setEnrollment(data);
+    } catch {
+      toast({ variant: "destructive", title: "Error al generar el código QR de inscripción" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (isOpen && !enrollment) {
+      fetchToken();
+    }
+  }, [isOpen, enrollment, fetchToken]);
+
+  useEffect(() => {
+    if (!enrollment) return;
+    const update = () => {
+      const expires = new Date(enrollment.expiresAt);
+      const now = new Date();
+      if (expires <= now) {
+        setTimeLeft("Expirado");
+        setEnrollment(null);
+        return;
+      }
+      setTimeLeft(formatDistanceToNowStrict(expires, { locale: es }));
+    };
+    update();
+    const interval = setInterval(update, 10000);
+    return () => clearInterval(interval);
+  }, [enrollment]);
+
+  const qrValue = enrollment
+    ? JSON.stringify({ enrollUrl: enrollment.enrollUrl, token: enrollment.token })
+    : "";
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) setEnrollment(null);
+    }}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="font-mono uppercase tracking-wider" data-testid="button-enrollment-qr">
+          <QrCode className="w-4 h-4 mr-2" />
+          QR de Inscripción
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[420px] bg-card border-border">
+        <DialogHeader>
+          <DialogTitle className="font-mono uppercase">Inscripción de Equipo</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-2">
+          {loading ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground font-mono">Generando código QR...</p>
+            </div>
+          ) : enrollment ? (
+            <>
+              <div className="bg-white p-4 rounded-lg shadow-inner" data-testid="enrollment-qr-code">
+                <QRCodeSVG value={qrValue} size={220} level="M" />
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono">
+                <Clock className="w-4 h-4" />
+                <span>Expira en: <span className="text-foreground">{timeLeft}</span></span>
+              </div>
+              <p className="text-xs text-muted-foreground font-mono text-center leading-relaxed">
+                Apunta la cámara de tu dispositivo Android TV a este código para inscribirlo automáticamente en tu cuenta.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchToken}
+                className="font-mono uppercase text-xs tracking-wider"
+                disabled={loading}
+              >
+                <RefreshCw className="w-3 h-3 mr-2" />
+                Regenerar
+              </Button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <p className="text-sm text-muted-foreground font-mono">El código QR ha expirado.</p>
+              <Button onClick={fetchToken} variant="outline" size="sm" className="font-mono uppercase text-xs tracking-wider">
+                <RefreshCw className="w-3 h-3 mr-2" />
+                Generar nuevo código
+              </Button>
+            </div>
+          )}
+        </div>
+        <DialogFooter />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Devices() {
   const [search, setSearch] = useState("");
@@ -41,11 +149,14 @@ export default function Devices() {
 
   useEffect(() => {
     socket.connect();
-    socket.on('device:status', () => {
+    const invalidate = () => {
       queryClient.invalidateQueries({ queryKey: getGetDevicesQueryKey() });
-    });
+    };
+    socket.on('device:status', invalidate);
+    socket.on('device:enrolled', invalidate);
     return () => {
-      socket.off('device:status');
+      socket.off('device:status', invalidate);
+      socket.off('device:enrolled', invalidate);
       socket.disconnect();
     };
   }, [queryClient]);
@@ -127,60 +238,64 @@ export default function Devices() {
             <p className="text-muted-foreground font-mono text-sm">Gestionar y monitorear equipos Android TV</p>
           </div>
           
-          <Dialog open={isCreateOpen} onOpenChange={(open) => {
-            setIsCreateOpen(open);
-            if (!open) {
-              setEditingDevice(null);
-              form.reset();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="font-mono uppercase tracking-wider" data-testid="button-add-device">
-                <Plus className="w-4 h-4 mr-2" />
-                Registrar Equipo
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-card border-border">
-              <DialogHeader>
-                <DialogTitle className="font-mono uppercase">{editingDevice ? 'Editar Equipo' : 'Registrar Nuevo Equipo'}</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Nombre del Equipo</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Pantalla Lobby 1" className="font-mono" {...field} data-testid="input-device-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="ip"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Dirección IPv4</FormLabel>
-                        <FormControl>
-                          <Input placeholder="192.168.1.100" className="font-mono" {...field} data-testid="input-device-ip" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <Button type="submit" disabled={createDevice.isPending || updateDevice.isPending} data-testid="button-save-device">
-                      {createDevice.isPending || updateDevice.isPending ? 'Procesando...' : 'Guardar'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2 flex-wrap">
+            <EnrollmentQrDialog />
+
+            <Dialog open={isCreateOpen} onOpenChange={(open) => {
+              setIsCreateOpen(open);
+              if (!open) {
+                setEditingDevice(null);
+                form.reset();
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="font-mono uppercase tracking-wider" data-testid="button-add-device">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Registrar Equipo
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="font-mono uppercase">{editingDevice ? 'Editar Equipo' : 'Registrar Nuevo Equipo'}</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Nombre del Equipo</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Pantalla Lobby 1" className="font-mono" {...field} data-testid="input-device-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="ip"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-mono text-xs uppercase text-muted-foreground">Dirección IPv4</FormLabel>
+                          <FormControl>
+                            <Input placeholder="192.168.1.100" className="font-mono" {...field} data-testid="input-device-ip" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <DialogFooter>
+                      <Button type="submit" disabled={createDevice.isPending || updateDevice.isPending} data-testid="button-save-device">
+                        {createDevice.isPending || updateDevice.isPending ? 'Procesando...' : 'Guardar'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Barra de búsqueda y filtros */}
