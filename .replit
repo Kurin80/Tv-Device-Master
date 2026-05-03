@@ -46,4 +46,9 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
+
+[userenv.development]
 ADB_SIMULATION = "true"
+
+[userenv.production]
+ADB_SIMULATION = "false"

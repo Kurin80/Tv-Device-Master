@@ -7,16 +7,29 @@ import {
   Users, 
   CalendarClock,
   LogOut,
-  Menu
+  Menu,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+function useAdbMode() {
+  const [mode, setMode] = useState<"simulation" | "real" | null>(null);
+  useEffect(() => {
+    fetch("/api/healthz")
+      .then((r) => r.json())
+      .then((d) => setMode(d.adbMode ?? null))
+      .catch(() => {});
+  }, []);
+  return mode;
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const adbMode = useAdbMode();
 
   const navigation = [
     { name: 'Panel', href: '/dashboard', icon: LayoutDashboard },
@@ -110,6 +123,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
         <div className="p-4 border-t border-sidebar-border bg-sidebar/50">
+          {/* Indicador de modo ADB */}
+          {adbMode && (
+            <div className={`mb-3 px-3 py-2 rounded-md border font-mono text-[10px] uppercase tracking-wider flex items-center gap-2 ${
+              adbMode === "simulation"
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+            }`} data-testid="adb-mode-badge">
+              {adbMode === "simulation"
+                ? <><FlaskConical className="h-3 w-3 shrink-0" /> ADB Simulado</>
+                : <><MonitorSmartphone className="h-3 w-3 shrink-0" /> ADB Real</>
+              }
+            </div>
+          )}
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 text-sidebar-primary flex items-center justify-center font-bold text-xs uppercase shrink-0">
               {user?.email?.charAt(0) || 'U'}
@@ -133,6 +159,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Banner de simulación ADB — visible en toda la interfaz */}
+        {adbMode === "simulation" && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 flex items-center gap-2 font-mono text-[11px] text-amber-400 uppercase tracking-wider" data-testid="simulation-banner">
+            <FlaskConical className="h-3 w-3 shrink-0" />
+            Modo simulación ADB activo — los comandos no se ejecutan en TVs reales.
+            Para producción, desactiva ADB_SIMULATION en la configuración del servidor.
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </main>

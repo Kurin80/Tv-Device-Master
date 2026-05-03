@@ -45,8 +45,10 @@ function verifyEnrollmentToken(token: string): EnrollmentTokenPayload {
 router.get("/enrollment/token", requireAuth, apiLimiter, async (req: Request, res: Response) => {
   const { tenantId } = req.user!;
   const token = signEnrollmentToken(tenantId);
-  const domain = process.env["REPLIT_DEV_DOMAIN"] ?? req.hostname;
-  const enrollUrl = `https://${domain}/api/devices/enroll`;
+  // Use the actual request host so this works correctly in both dev and production.
+  // trust proxy is enabled so req.protocol is https behind Replit's reverse proxy.
+  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const enrollUrl = `${baseUrl}/api/devices/enroll`;
   const expiresAt = new Date(Date.now() + ENROLLMENT_EXPIRY * 1000).toISOString();
 
   res.json({ token, enrollUrl, expiresAt });

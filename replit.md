@@ -149,6 +149,10 @@ Eventos emitidos por el servidor:
 
 Para desarrollo sin TVs reales, establece `ADB_SIMULATION=true`. El servidor simulará respuestas ADB incluyendo una lista de apps de ejemplo (YouTube TV, Netflix, Disney+, etc.).
 
+- **Separación dev/prod**: `ADB_SIMULATION=true` en development, `false` en production (vía env vars y `artifact.toml`).
+- **Indicador visual**: El dashboard muestra un banner ámbar cuando el modo simulación está activo y un badge verde "ADB Real" en la barra lateral cuando está desactivado. El dato proviene de `GET /api/healthz` → campo `adbMode`.
+- **URL de inscripción QR**: Generada dinámicamente con `req.protocol + req.get("host")` — funciona correctamente tanto en dev (`.replit.dev`) como en producción (`.replit.app`).
+
 ## Credenciales Demo
 
 Tras ejecutar el seed:
@@ -201,7 +205,11 @@ Al publicar, en la sección **Advanced** del panel de publicación, seleccionar 
 La plataforma quedará disponible en `https://<nombre>.replit.app`.
 
 ### ADB en producción con TVs reales
-1. Cambiar el secreto `ADB_SIMULATION` a `false` en producción
-2. Asegurarse que el servidor de producción tenga acceso de red a las IPs de los TVs
-3. Los TVs deben estar en la misma red o accesibles vía VPN desde el servidor
-4. El binario `adb` está instalado en el entorno Nix (`android-tools`)
+1. `ADB_SIMULATION=false` ya está configurado automáticamente en el entorno de producción (env var + artifact.toml). No requiere acción adicional.
+2. El dashboard mostrará el badge **"ADB Real"** en la barra lateral cuando el servidor esté en modo real.
+3. Los TVs deben tener ADB habilitado (ver sección "Activar ADB en Android TV") y puerto 5555 accesible desde el servidor.
+4. Para despliegues cloud: los TVs deben estar en la misma red que el servidor, o conectados por VPN.
+5. El binario `adb` está instalado en el entorno Nix (`android-tools` v35.0.1).
+
+### Endpoint de salud
+`GET /api/healthz` → `{ status, adbMode: "simulation"|"real", version }` — usado por el dashboard para mostrar el indicador de modo.
