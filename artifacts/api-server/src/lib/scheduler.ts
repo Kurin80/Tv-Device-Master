@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { db } from "@workspace/db";
 import { scheduledTasksTable, devicesTable, commandsTable, logsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import * as adb from "./adbService.js";
 import { logger } from "./logger.js";
 import { getIo } from "./socket.js";
