@@ -47,6 +47,3 @@ externalPort = 3000
 
 [userenv.shared]
 ADB_SIMULATION = "true"
-
-[nix]
-channel = "stable-25_05"
