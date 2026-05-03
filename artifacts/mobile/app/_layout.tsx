@@ -20,7 +20,14 @@ import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
 SplashScreen.preventAutoHideAsync();
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+if (!process.env.EXPO_PUBLIC_DOMAIN) {
+  console.error(
+    "[MDM] EXPO_PUBLIC_DOMAIN is not set. API calls will fail. " +
+    "Ensure the dev workflow injects this variable."
+  );
+}
+
+setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN ?? ""}`);
 setAuthTokenGetter(() => AsyncStorage.getItem(TOKEN_KEY));
 
 const queryClient = new QueryClient();
