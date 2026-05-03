@@ -24,6 +24,7 @@ Plataforma MDM (Mobile Device Management) completa tipo SaaS multiempresa para g
 
 - **API Server** (`artifacts/api-server`) — Backend Express con WebSockets, ADB, multi-tenant
 - **MDM Dashboard** (`artifacts/dashboard`) — React+Vite web dashboard (previewPath `/`, port 23183)
+- **MDM Mobile** (`artifacts/mobile`) — Expo React Native app (previewPath `/mobile/`, port 18115)
 - **Canvas** (`artifacts/mockup-sandbox`) — Sandbox para prototipos UI
 
 ## Dashboard (Web Frontend)
@@ -45,6 +46,24 @@ Stack: React + Vite + Tailwind CSS + Radix UI + TanStack Query + wouter
 - `/logs` — tenant-wide audit log table
 - `/users` — user management (admin only)
 - `/schedule` — cron-based scheduled tasks CRUD
+
+## Mobile App (Expo React Native)
+
+Stack: Expo SDK 54 + expo-router + TanStack Query + socket.io-client + AsyncStorage
+
+- **Auth**: JWT stored in `AsyncStorage` (key `mdm_token`). `setAuthTokenGetter` and `setBaseUrl` configured at module level in `app/_layout.tsx`. Token getter supports async (returns Promise).
+- **Routing**: expo-router file-based routing. Auth redirect in `AuthRedirect` component using `useSegments` + `router.replace`.
+  - `/(auth)/login` — Login screen (unauthenticated)
+  - `/(tabs)/` — Device list with live WebSocket status
+  - `/(tabs)/device/[id]` — Physical-remote-style control screen
+- **WebSocket**: `socket.io-client` connects to `https://${EXPO_PUBLIC_DOMAIN}` path `/socket.io`, auth `{ token }`, `transports: ['websocket']`. Listens to `device:status` events.
+- **Remote control keycodes**: UP=19, DOWN=20, LEFT=21, RIGHT=22, OK=23, Vol+=24, Vol-=25, Menu=82
+- **Theme**: Dark navy matching dashboard — background `#0d1319`, primary teal `#22c3b5`, card `#121e2c`
+- **Key files**:
+  - `contexts/AuthContext.tsx` — JWT auth provider
+  - `app/_layout.tsx` — Root layout with setBaseUrl, setAuthTokenGetter, AuthProvider
+  - `app/(tabs)/index.tsx` — Device list + socket.io live status
+  - `app/(tabs)/device/[id].tsx` — Remote control (D-pad, volume, power, apps)
 
 ## Key Commands
 
