@@ -4,14 +4,13 @@ import {
   useSendCommand,
 } from "@workspace/api-client-react";
 import type { CommandRequestAction } from "@workspace/api-client-react";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Platform,
   Pressable,
   ScrollView,
@@ -116,11 +115,12 @@ export default function DeviceRemoteScreen() {
   const navigation = useNavigation();
   const id = params.id ?? "";
 
-  const { data: device } = useGetDevice(id, { query: { enabled: !!id } });
-  const { data: apps } = useGetDeviceApps(id, { query: { enabled: !!id } });
-  const sendCmd = useSendCommand(id);
+  const { data: device } = useGetDevice(id);
+  const { data: apps } = useGetDeviceApps(id);
+  const sendCmd = useSendCommand();
 
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [lastSuccessAction, setLastSuccessAction] = useState<string | null>(null);
   const [openAppVisible, setOpenAppVisible] = useState(false);
   const [openAppPackage, setOpenAppPackage] = useState("");
 
@@ -138,8 +138,10 @@ export default function DeviceRemoteScreen() {
       setPendingAction(action + (keycode ?? ""));
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       try {
-        await sendCmd.mutateAsync({ data: { action, param, keycode } });
+        await sendCmd.mutateAsync({ id, data: { action, param, keycode } });
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setLastSuccessAction(action);
+        setTimeout(() => setLastSuccessAction(null), 1500);
       } catch {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Error", "No se pudo ejecutar el comando");
@@ -181,15 +183,21 @@ export default function DeviceRemoteScreen() {
     >
       {/* Status bar */}
       <View style={[styles.statusBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-        <Text style={[styles.statusText, { color: statusColor, fontFamily: "Inter_500Medium" }]}>
-          {statusLabel}
-        </Text>
-        {device?.ip && (
+        <View style={styles.statusLeft}>
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <Text style={[styles.statusText, { color: statusColor, fontFamily: "Inter_500Medium" }]}>
+            {statusLabel}
+          </Text>
+        </View>
+        {lastSuccessAction ? (
+          <Text style={[styles.successText, { color: colors.primary, fontFamily: "Inter_500Medium" }]}>
+            Enviado ✓
+          </Text>
+        ) : device?.ip ? (
           <Text style={[styles.ipText, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>
             {device.ip}
           </Text>
-        )}
+        ) : null}
       </View>
 
       {/* Power row */}
@@ -511,10 +519,15 @@ const styles = StyleSheet.create({
   statusBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
     padding: 12,
     borderRadius: 10,
     borderWidth: 1,
+  },
+  statusLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   statusDot: {
     width: 8,
@@ -525,9 +538,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.8,
   },
+  successText: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
   ipText: {
     fontSize: 12,
-    marginLeft: "auto" as unknown as number,
   },
   section: {
     borderRadius: 12,

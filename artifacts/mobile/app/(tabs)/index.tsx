@@ -26,9 +26,7 @@ export default function DeviceListScreen() {
   const router = useRouter();
   const { token, logout } = useAuth();
 
-  const { data: devices, isLoading, isError, refetch } = useGetDevices({
-    query: { enabled: !!token },
-  });
+  const { data: devices, isLoading, isError, refetch } = useGetDevices();
 
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
   const [refreshing, setRefreshing] = useState(false);
