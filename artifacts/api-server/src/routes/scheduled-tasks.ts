@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { scheduledTasksTable, devicesTable } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuth, requireAdmin } from "../middlewares/auth.js";
 import { apiLimiter } from "../middlewares/rateLimiter.js";
 import { scheduleTask, cancelTask } from "../lib/scheduler.js";
 import { z } from "zod";
@@ -25,7 +25,7 @@ router.get("/scheduled-tasks", requireAuth, apiLimiter, async (req: Request, res
   res.json(tasks);
 });
 
-router.post("/scheduled-tasks", requireAuth, apiLimiter, async (req: Request, res: Response) => {
+router.post("/scheduled-tasks", requireAuth, requireAdmin, apiLimiter, async (req: Request, res: Response) => {
   const { tenantId } = req.user!;
   const parsed = createTaskSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -56,7 +56,7 @@ router.post("/scheduled-tasks", requireAuth, apiLimiter, async (req: Request, re
   res.status(201).json(task);
 });
 
-router.put("/scheduled-tasks/:id", requireAuth, apiLimiter, async (req: Request, res: Response) => {
+router.put("/scheduled-tasks/:id", requireAuth, requireAdmin, apiLimiter, async (req: Request, res: Response) => {
   const { tenantId } = req.user!;
   const id = String(req.params["id"]);
   const [existing] = await db.select().from(scheduledTasksTable)
@@ -87,7 +87,7 @@ router.put("/scheduled-tasks/:id", requireAuth, apiLimiter, async (req: Request,
   res.json(updated);
 });
 
-router.delete("/scheduled-tasks/:id", requireAuth, apiLimiter, async (req: Request, res: Response) => {
+router.delete("/scheduled-tasks/:id", requireAuth, requireAdmin, apiLimiter, async (req: Request, res: Response) => {
   const { tenantId } = req.user!;
   const id = String(req.params["id"]);
   const [existing] = await db.select({ id: scheduledTasksTable.id }).from(scheduledTasksTable)

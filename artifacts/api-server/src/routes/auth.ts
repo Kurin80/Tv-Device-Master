@@ -15,12 +15,12 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Self-service registration only creates a NEW tenant + admin user.
+// Joining an existing tenant requires an admin invitation (via POST /users).
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  tenantId: z.string().uuid().optional(),
-  tenantName: z.string().min(1).optional(),
-  role: z.enum(["admin", "operator"]).optional(),
+  tenantName: z.string().min(1),
 });
 
 router.post("/auth/login", authLimiter, async (req: Request, res: Response) => {
@@ -62,26 +62,16 @@ router.post("/auth/login", authLimiter, async (req: Request, res: Response) => {
   });
 });
 
+// Public registration: always creates a brand-new tenant with the caller as admin.
+// No way to join an existing tenant or self-assign a custom role.
 router.post("/auth/register", authLimiter, async (req: Request, res: Response) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Datos inválidos", details: parsed.error.errors });
+    res.status(400).json({ error: "Se requieren email, contraseña (mínimo 8 caracteres) y nombre de empresa", details: parsed.error.errors });
     return;
   }
 
-  const { email, password, tenantId, tenantName, role } = parsed.data;
-
-  let resolvedTenantId = tenantId;
-
-  if (!resolvedTenantId && tenantName) {
-    const [newTenant] = await db.insert(tenantsTable).values({ name: tenantName }).returning();
-    resolvedTenantId = newTenant!.id;
-  }
-
-  if (!resolvedTenantId) {
-    res.status(400).json({ error: "Se requiere tenantId o tenantName" });
-    return;
-  }
+  const { email, password, tenantName } = parsed.data;
 
   const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1);
   if (existing.length > 0) {
@@ -89,18 +79,20 @@ router.post("/auth/register", authLimiter, async (req: Request, res: Response) =
     return;
   }
 
+  const [newTenant] = await db.insert(tenantsTable).values({ name: tenantName }).returning();
+
   const hashedPassword = await bcrypt.hash(password, 10);
   const [user] = await db.insert(usersTable).values({
     email: email.toLowerCase(),
     password: hashedPassword,
-    tenantId: resolvedTenantId,
-    role: role ?? "admin",
+    tenantId: newTenant!.id,
+    role: "admin",
   }).returning();
 
   const token = signToken({
     userId: user!.id,
     tenantId: user!.tenantId,
-    role: user!.role as "admin" | "operator",
+    role: "admin",
     email: user!.email,
   });
 

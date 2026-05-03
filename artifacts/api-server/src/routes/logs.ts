@@ -21,7 +21,7 @@ router.get("/devices/:id/logs", requireAuth, apiLimiter, async (req: Request, re
 
   const limit = Math.min(parseInt(String(req.query["limit"] ?? "100")), 500);
   const logs = await db.select().from(logsTable)
-    .where(eq(logsTable.deviceId, device.id))
+    .where(and(eq(logsTable.deviceId, device.id), eq(logsTable.tenantId, tenantId)))
     .orderBy(desc(logsTable.createdAt))
     .limit(limit);
 
@@ -30,24 +30,10 @@ router.get("/devices/:id/logs", requireAuth, apiLimiter, async (req: Request, re
 
 router.get("/logs", requireAuth, apiLimiter, async (req: Request, res: Response) => {
   const { tenantId } = req.user!;
-  const devices = await db.select({ id: devicesTable.id }).from(devicesTable).where(eq(devicesTable.tenantId, tenantId));
-  const deviceIds = devices.map(d => d.id);
-
-  if (deviceIds.length === 0) {
-    res.json([]);
-    return;
-  }
-
   const limit = Math.min(parseInt(String(req.query["limit"] ?? "100")), 500);
-  const allLogs = await db.select({
-    id: logsTable.id,
-    deviceId: logsTable.deviceId,
-    message: logsTable.message,
-    level: logsTable.level,
-    createdAt: logsTable.createdAt,
-  }).from(logsTable)
-    .innerJoin(devicesTable, eq(logsTable.deviceId, devicesTable.id))
-    .where(eq(devicesTable.tenantId, tenantId))
+
+  const allLogs = await db.select().from(logsTable)
+    .where(eq(logsTable.tenantId, tenantId))
     .orderBy(desc(logsTable.createdAt))
     .limit(limit);
 

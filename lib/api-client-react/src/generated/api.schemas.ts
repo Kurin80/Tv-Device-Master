@@ -14,21 +14,21 @@ export interface LoginRequest {
   password: string;
 }
 
-export type RegisterRequestRole =
-  (typeof RegisterRequestRole)[keyof typeof RegisterRequestRole];
-
-export const RegisterRequestRole = {
-  admin: "admin",
-  operator: "operator",
-} as const;
-
 export interface RegisterRequest {
   email: string;
   /** @minLength 8 */
   password: string;
-  tenantId?: string;
-  tenantName?: string;
-  role?: RegisterRequestRole;
+  tenantName: string;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface UpdateTenantRequest {
+  name: string;
 }
 
 export type UserProfileRole =

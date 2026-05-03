@@ -1,8 +1,11 @@
 import { createServer } from "http";
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
+import { validateJwtSecret } from "./lib/jwt.js";
 import { initSocket, startDeviceHeartbeat } from "./lib/socket.js";
 import { loadScheduledTasks } from "./lib/scheduler.js";
+
+validateJwtSecret();
 
 const rawPort = process.env["PORT"];
 

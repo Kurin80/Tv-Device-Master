@@ -42,9 +42,7 @@ export const registerBodyPasswordMin = 8;
 export const RegisterBody = zod.object({
   email: zod.string().email(),
   password: zod.string().min(registerBodyPasswordMin),
-  tenantId: zod.string().optional(),
-  tenantName: zod.string().optional(),
-  role: zod.enum(["admin", "operator"]).optional(),
+  tenantName: zod.string(),
 });
 
 /**
@@ -59,6 +57,28 @@ export const GetMeResponse = zod.object({
     tenantName: zod.string().optional(),
     createdAt: zod.coerce.date().optional(),
   }),
+});
+
+/**
+ * @summary Obtener información del tenant actual
+ */
+export const GetTenantResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Actualizar nombre del tenant (solo admin)
+ */
+export const UpdateTenantBody = zod.object({
+  name: zod.string(),
+});
+
+export const UpdateTenantResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  createdAt: zod.coerce.date(),
 });
 
 /**

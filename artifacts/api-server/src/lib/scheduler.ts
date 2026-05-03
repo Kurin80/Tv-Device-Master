@@ -48,6 +48,7 @@ export function scheduleTask(task: ScheduledTask): void {
 
     await db.insert(commandsTable).values({
       deviceId: device.id,
+      tenantId: task.tenantId,
       command: `[cron] ${task.action}`,
       status: result.success ? "success" : "error",
       response: result.output || result.error,
@@ -56,13 +57,14 @@ export function scheduleTask(task: ScheduledTask): void {
 
     await db.insert(logsTable).values({
       deviceId: device.id,
+      tenantId: task.tenantId,
       message: `Tarea programada "${task.name}": ${result.output || result.error}`,
       level: result.success ? "info" : "error",
     });
 
     const io = getIo();
     if (io) {
-      io.to(`tenant:${device.tenantId}`).emit("device:log", {
+      io.to(`tenant:${task.tenantId}`).emit("device:log", {
         deviceId: device.id,
         message: `[Cron] ${task.name}: ${result.output || result.error}`,
         level: result.success ? "info" : "error",

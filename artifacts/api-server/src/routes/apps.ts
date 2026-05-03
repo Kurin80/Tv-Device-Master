@@ -19,7 +19,8 @@ router.get("/devices/:id/apps", requireAuth, apiLimiter, async (req: Request, re
     return;
   }
 
-  const apps = await db.select().from(appsTable).where(eq(appsTable.deviceId, device.id));
+  const apps = await db.select().from(appsTable)
+    .where(and(eq(appsTable.deviceId, device.id), eq(appsTable.tenantId, tenantId)));
   res.json(apps);
 });
 

@@ -54,6 +54,7 @@ async function seed() {
 
     await db.insert(logsTable).values({
       deviceId: device!.id,
+      tenantId: tenant!.id,
       message: `Dispositivo "${d.name}" registrado en la base de datos`,
       level: "info",
     });

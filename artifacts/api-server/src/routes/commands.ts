@@ -37,19 +37,16 @@ async function getDeviceForTenant(deviceId: string, tenantId: string) {
   return device;
 }
 
-async function saveLog(deviceId: string, message: string, level = "info") {
-  await db.insert(logsTable).values({ deviceId, message, level });
+async function saveLog(deviceId: string, tenantId: string, message: string, level = "info") {
+  await db.insert(logsTable).values({ deviceId, tenantId, message, level });
   const io = getIo();
   if (io) {
-    const [device] = await db.select({ tenantId: devicesTable.tenantId }).from(devicesTable).where(eq(devicesTable.id, deviceId)).limit(1);
-    if (device) {
-      io.to(`tenant:${device.tenantId}`).emit("device:log", {
-        deviceId,
-        message,
-        level,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    io.to(`tenant:${tenantId}`).emit("device:log", {
+      deviceId,
+      message,
+      level,
+      timestamp: new Date().toISOString(),
+    });
   }
 }
 
@@ -72,6 +69,7 @@ router.post("/devices/:id/command", requireAuth, commandLimiter, async (req: Req
 
   const [cmd] = await db.insert(commandsTable).values({
     deviceId: device.id,
+    tenantId,
     command: action,
     status: "running",
   }).returning();
@@ -109,9 +107,14 @@ router.post("/devices/:id/command", requireAuth, commandLimiter, async (req: Req
       case "sync_apps":
       case "list_apps": {
         const packages = await adb.listPackages(device.ip);
-        await db.delete(appsTable).where(eq(appsTable.deviceId, device.id));
+        await db.delete(appsTable).where(and(
+          eq(appsTable.deviceId, device.id),
+          eq(appsTable.tenantId, tenantId)
+        ));
         if (packages.length > 0) {
-          await db.insert(appsTable).values(packages.map(pkg => ({ deviceId: device.id, packageName: pkg })));
+          await db.insert(appsTable).values(
+            packages.map(pkg => ({ deviceId: device.id, tenantId, packageName: pkg }))
+          );
         }
         result = { success: true, output: packages.join("\n") };
         break;
@@ -144,7 +147,7 @@ router.post("/devices/:id/command", requireAuth, commandLimiter, async (req: Req
   }).where(eq(devicesTable.id, device.id));
 
   const logLevel = result.success ? "info" : "error";
-  await saveLog(device.id, `Comando "${action}": ${result.output || result.error}`, logLevel);
+  await saveLog(device.id, tenantId, `Comando "${action}": ${result.output || result.error}`, logLevel);
 
   const io = getIo();
   if (io) {
@@ -175,7 +178,10 @@ router.get("/devices/:id/commands", requireAuth, async (req: Request, res: Respo
   }
 
   const commands = await db.select().from(commandsTable)
-    .where(eq(commandsTable.deviceId, device.id))
+    .where(and(
+      eq(commandsTable.deviceId, device.id),
+      eq(commandsTable.tenantId, tenantId)
+    ))
     .orderBy(desc(commandsTable.createdAt))
     .limit(50);
 

@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface RegisterRequest {
-  email: string;
-  /** @minLength 8 */
-  password: string;
-  tenantName: string;
+export interface Tenant {
+  id: string;
+  name: string;
+  createdAt: Date;
 }
