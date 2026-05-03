@@ -11,6 +11,8 @@ export const commandsTable = pgTable("commands", {
   deviceId: uuid("device_id").notNull().references(() => devicesTable.id, { onDelete: "cascade" }),
   tenantId: uuid("tenant_id").notNull().references(() => tenantsTable.id, { onDelete: "cascade" }),
   command: text("command").notNull(),
+  // Optional parameter for the command (package name, keycode, APK path, etc.)
+  param: text("param"),
   status: commandStatusEnum("status").notNull().default("pending"),
   response: text("response"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

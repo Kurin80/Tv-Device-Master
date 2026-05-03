@@ -13,8 +13,11 @@ export const devicesTable = pgTable("devices", {
   tenantId: uuid("tenant_id").notNull().references(() => tenantsTable.id, { onDelete: "cascade" }),
   lastSeen: timestamp("last_seen"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Token used by the TV agent to authenticate over the internet.
+  // Generated at enrollment, persisted in the agent app's storage.
+  deviceToken: text("device_token").unique(),
 });
 
-export const insertDeviceSchema = createInsertSchema(devicesTable).omit({ id: true, createdAt: true, lastSeen: true, status: true });
+export const insertDeviceSchema = createInsertSchema(devicesTable).omit({ id: true, createdAt: true, lastSeen: true, status: true, deviceToken: true });
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
 export type Device = typeof devicesTable.$inferSelect;

@@ -80,7 +80,9 @@ Tablas principales con `tenant_id` en todas las entidades de negocio:
 - `tenants` — empresas/organizaciones
 - `users` — usuarios con roles admin/operator
 - `devices` — dispositivos Android TV con status online/offline
-- `commands` — historial de comandos ADB ejecutados
+  - `device_token` (text, unique, nullable) — UUID emitido en el enroll, usado por el TV Agent para auth
+- `commands` — cola de comandos (pending → running → success/error)
+  - `param` (text, nullable) — parámetro del comando (package name, keycode, ruta APK, etc.)
 - `apps` — apps instaladas por dispositivo
 - `logs` — logs de auditoría en tiempo real
 - `scheduled_tasks` — tareas cron programadas
@@ -110,10 +112,18 @@ Tablas principales con `tenant_id` en todas las entidades de negocio:
 - `DELETE /api/devices/:id` — Eliminar dispositivo
 - `POST /api/devices/:id/ping` — Verificar conectividad ADB
 
-### Commands (ADB)
-- `POST /api/devices/:id/command` — Enviar comando ADB
-  - Acciones: `screen_toggle`, `home`, `back`, `reboot`, `open_app`, `install_apk`, `uninstall_app`, `sync_apps`, `keyevent`, `kiosk_enable`
+### Commands — modelo híbrido (ADB + Agente)
+- `POST /api/devices/:id/command` — Encolar comando
+  - Responde inmediatamente con `{ commandId, status: "pending" }`.
+  - Intenta ADB en background (5 s timeout). Si ADB falla, el agente TV lo recoge.
+  - Acciones: `screen_toggle`, `screen_on`, `screen_off`, `home`, `back`, `reboot`, `open_app`, `install_apk`, `uninstall_app`, `sync_apps`, `keyevent`, `kiosk_enable`, `kiosk_disable`
 - `GET /api/devices/:id/commands` — Historial de comandos
+
+### TV Agent API (autenticación: `X-Device-Token: <uuid>`)
+- `POST /api/agent/heartbeat` — El agente actualiza su estado a `online` y refresca `lastSeen`
+  - Body: `{ ip?: string }` — el servidor actualiza la IP si cambia (DHCP)
+- `GET /api/agent/commands` — El agente recoge comandos `pending` (los marca `running`)
+- `POST /api/agent/commands/:id/result` — El agente reporta resultado `{ status, response, packages? }`
 
 ### Apps & Logs
 - `GET /api/devices/:id/apps` — Apps instaladas

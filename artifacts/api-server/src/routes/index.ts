@@ -9,6 +9,7 @@ import appsRouter from "./apps.js";
 import logsRouter from "./logs.js";
 import usersRouter from "./users.js";
 import scheduledTasksRouter from "./scheduled-tasks.js";
+import agentRouter from "./agent.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,7 @@ router.use(appsRouter);
 router.use(logsRouter);
 router.use(usersRouter);
 router.use(scheduledTasksRouter);
+// TV agent endpoints — device-token authenticated, no user JWT needed
+router.use(agentRouter);
 
 export default router;
