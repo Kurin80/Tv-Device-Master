@@ -14,7 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 export default function Dashboard() {
   const { data: tenant, isLoading: isTenantLoading } = useGetTenant();
   const { data: devices, isLoading: isDevicesLoading } = useGetDevices();
-  const { data: logs, isLoading: isLogsLoading } = useGetAllLogs({ query: { limit: 5 } });
+  const { data: logs, isLoading: isLogsLoading } = useGetAllLogs({ limit: 5 });
 
   const stats = {
     total: devices?.length || 0,

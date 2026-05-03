@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetUsers, useCreateUser, useDeleteUser } from "@workspace/api-client-react";
+import { useGetUsers, useCreateUser, useDeleteUser, getGetUsersQueryKey, ErrorType, CreateUserRequest } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -45,19 +45,20 @@ export default function Users() {
 
   const onSubmit = (values: z.infer<typeof userSchema>) => {
     createUser.mutate(
-      { data: values as any },
+      { data: values as CreateUserRequest },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+          queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
           toast({ title: "User provisioned successfully" });
           setIsCreateOpen(false);
           form.reset();
         },
-        onError: (error: any) => {
+        onError: (error: ErrorType<unknown>) => {
+          const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
           toast({ 
             variant: "destructive", 
             title: "Failed to provision user",
-            description: error?.response?.data?.message || "Unknown error occurred."
+            description: msg || "Unknown error occurred."
           });
         }
       }
@@ -75,7 +76,7 @@ export default function Users() {
         { id },
         {
           onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+            queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
             toast({ title: "Operator access revoked" });
           },
           onError: () => toast({ variant: "destructive", title: "Failed to revoke access" })

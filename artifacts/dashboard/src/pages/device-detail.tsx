@@ -7,7 +7,11 @@ import {
   useGetDeviceLogs,
   usePingDevice,
   useSendCommand,
-  getGetDeviceQueryKey
+  getGetDeviceQueryKey,
+  getGetDeviceCommandsQueryKey,
+  getGetDeviceAppsQueryKey,
+  getGetDeviceLogsQueryKey,
+  CommandRequest
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -33,22 +37,22 @@ export default function DeviceDetail() {
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const { data: device, isLoading } = useGetDevice(id, { 
-    query: { enabled: !!id } 
+    query: { enabled: !!id, queryKey: getGetDeviceQueryKey(id) } 
   });
   
   const { data: commands } = useGetDeviceCommands(id, {
-    query: { enabled: !!id }
+    query: { enabled: !!id, queryKey: getGetDeviceCommandsQueryKey(id) }
   });
   
   const { data: apps } = useGetDeviceApps(id, {
-    query: { enabled: !!id }
+    query: { enabled: !!id, queryKey: getGetDeviceAppsQueryKey(id) }
   });
   
   const { data: initialLogs } = useGetDeviceLogs(id, { limit: 50 }, {
-    query: { enabled: !!id }
+    query: { enabled: !!id, queryKey: getGetDeviceLogsQueryKey(id, { limit: 50 }) }
   });
 
-  const [liveLogs, setLiveLogs] = useState<any[]>([]);
+  const [liveLogs, setLiveLogs] = useState<{ id?: string; deviceId: string; message: string; level: string; createdAt: string }[]>([]);
 
   useEffect(() => {
     if (initialLogs) {
@@ -97,7 +101,7 @@ export default function DeviceDetail() {
 
   const handlePing = () => {
     pingDevice.mutate(
-      { data: { deviceId: id } },
+      { id },
       {
         onSuccess: (res) => {
           toast({ 
@@ -112,13 +116,13 @@ export default function DeviceDetail() {
     );
   };
 
-  const handleCommand = (action: any, param?: string) => {
+  const handleCommand = (action: CommandRequest['action'], param?: string) => {
     sendCommand.mutate(
-      { data: { deviceId: id, action, param } },
+      { id, data: { action, param } },
       {
         onSuccess: () => {
           toast({ title: "Command dispatched" });
-          queryClient.invalidateQueries({ queryKey: ["/api/devices", id, "commands"] });
+          queryClient.invalidateQueries({ queryKey: getGetDeviceCommandsQueryKey(id) });
         },
         onError: () => toast({ variant: "destructive", title: "Failed to dispatch command" })
       }

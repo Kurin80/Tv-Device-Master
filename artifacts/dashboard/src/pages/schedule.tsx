@@ -4,7 +4,9 @@ import {
   useCreateScheduledTask, 
   useUpdateScheduledTask, 
   useDeleteScheduledTask,
-  useGetDevices
+  useGetDevices,
+  getGetScheduledTasksQueryKey,
+  ScheduledTask
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -70,7 +72,7 @@ export default function Schedule() {
         { id: editingTask, data: payload },
         {
           onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/scheduled-tasks"] });
+            queryClient.invalidateQueries({ queryKey: getGetScheduledTasksQueryKey() });
             toast({ title: "Schedule updated successfully" });
             setIsCreateOpen(false);
             setEditingTask(null);
@@ -81,10 +83,10 @@ export default function Schedule() {
       );
     } else {
       createTask.mutate(
-        { data: payload as any },
+        { data: payload },
         {
           onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/scheduled-tasks"] });
+            queryClient.invalidateQueries({ queryKey: getGetScheduledTasksQueryKey() });
             toast({ title: "Task scheduled successfully" });
             setIsCreateOpen(false);
             form.reset();
@@ -110,12 +112,19 @@ export default function Schedule() {
     }
   };
 
-  const handleToggle = (task: any, enabled: boolean) => {
+  const handleToggle = (task: ScheduledTask, enabled: boolean) => {
+    const { id, tenantId: _t, createdAt: _c, ...rest } = task;
+    const data = {
+      ...rest,
+      enabled,
+      deviceId: rest.deviceId ?? undefined,
+      actionParam: rest.actionParam ?? undefined,
+    };
     updateTask.mutate(
-      { id: task.id, data: { ...task, enabled } },
+      { id, data },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["/api/scheduled-tasks"] });
+          queryClient.invalidateQueries({ queryKey: getGetScheduledTasksQueryKey() });
         }
       }
     );

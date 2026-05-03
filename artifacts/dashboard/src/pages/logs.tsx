@@ -12,7 +12,7 @@ export default function Logs() {
   const [filterLevel, setFilterLevel] = useState<string>("all");
   const [search, setSearch] = useState("");
   
-  const { data: logs, isLoading } = useGetAllLogs({ query: { limit: 200 } });
+  const { data: logs, isLoading } = useGetAllLogs({ limit: 200 });
 
   const filteredLogs = logs?.filter(log => {
     const matchesLevel = filterLevel === "all" || log.level.toLowerCase() === filterLevel.toLowerCase();

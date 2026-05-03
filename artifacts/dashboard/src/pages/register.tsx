@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRegister } from "@workspace/api-client-react";
+import { useRegister, ErrorType } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -44,11 +44,12 @@ export default function Register() {
         onSuccess: (data) => {
           login(data.token);
         },
-        onError: (error: any) => {
+        onError: (error: ErrorType<unknown>) => {
+          const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
           toast({
             variant: "destructive",
             title: "Registration failed",
-            description: error?.response?.data?.message || "Failed to initialize workspace.",
+            description: msg || "Failed to initialize workspace.",
           });
         },
       }
