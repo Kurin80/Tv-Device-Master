@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: MDM Platform API - Mobile Device Management para Android TV
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Autenticación y usuarios
+  - name: devices
+    description: Gestión de dispositivos Android TV
+  - name: commands
+    description: Comandos ADB para dispositivos
+  - name: apps
+    description: Apps instaladas en dispositivos
+  - name: logs
+    description: Logs de auditoría
+  - name: users
+    description: Gestión de usuarios del tenant
+  - name: scheduled-tasks
+    description: Tareas programadas
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +37,446 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Credenciales inválidas
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Registrar nuevo usuario y tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Usuario registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email ya registrado
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Obtener perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Perfil del usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+
+  /devices:
+    get:
+      operationId: getDevices
+      tags: [devices]
+      summary: Listar dispositivos del tenant
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de dispositivos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Device"
+    post:
+      operationId: createDevice
+      tags: [devices]
+      summary: Registrar nuevo dispositivo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeviceRequest"
+      responses:
+        "201":
+          description: Dispositivo creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+
+  /devices/{id}:
+    get:
+      operationId: getDevice
+      tags: [devices]
+      summary: Obtener dispositivo por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dispositivo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+        "404":
+          description: No encontrado
+    put:
+      operationId: updateDevice
+      tags: [devices]
+      summary: Actualizar dispositivo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeviceRequest"
+      responses:
+        "200":
+          description: Dispositivo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+    delete:
+      operationId: deleteDevice
+      tags: [devices]
+      summary: Eliminar dispositivo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Eliminado
+
+  /devices/{id}/ping:
+    post:
+      operationId: pingDevice
+      tags: [devices]
+      summary: Verificar conectividad del dispositivo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estado de conectividad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingResponse"
+
+  /devices/{id}/command:
+    post:
+      operationId: sendCommand
+      tags: [commands]
+      summary: Enviar comando ADB al dispositivo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandRequest"
+      responses:
+        "200":
+          description: Resultado del comando
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandResponse"
+
+  /devices/{id}/commands:
+    get:
+      operationId: getDeviceCommands
+      tags: [commands]
+      summary: Historial de comandos del dispositivo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de comandos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Command"
+
+  /devices/{id}/apps:
+    get:
+      operationId: getDeviceApps
+      tags: [apps]
+      summary: Listar apps instaladas en el dispositivo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de apps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/App"
+
+  /devices/{id}/logs:
+    get:
+      operationId: getDeviceLogs
+      tags: [logs]
+      summary: Obtener logs del dispositivo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Logs del dispositivo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Log"
+
+  /logs:
+    get:
+      operationId: getAllLogs
+      tags: [logs]
+      summary: Obtener todos los logs del tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Logs del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Log"
+
+  /users:
+    get:
+      operationId: getUsers
+      tags: [users]
+      summary: Listar usuarios del tenant (solo admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Crear usuario en el tenant (solo admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /users/{id}:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Eliminar usuario (solo admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Eliminado
+
+  /scheduled-tasks:
+    get:
+      operationId: getScheduledTasks
+      tags: [scheduled-tasks]
+      summary: Listar tareas programadas del tenant
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de tareas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduledTask"
+    post:
+      operationId: createScheduledTask
+      tags: [scheduled-tasks]
+      summary: Crear tarea programada
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduledTaskRequest"
+      responses:
+        "201":
+          description: Tarea creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledTask"
+
+  /scheduled-tasks/{id}:
+    put:
+      operationId: updateScheduledTask
+      tags: [scheduled-tasks]
+      summary: Actualizar tarea programada
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduledTaskRequest"
+      responses:
+        "200":
+          description: Tarea actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledTask"
+    delete:
+      operationId: deleteScheduledTask
+      tags: [scheduled-tasks]
+      summary: Eliminar tarea programada
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Eliminado
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +486,313 @@ components:
       required:
         - status
 
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        tenantId:
+          type: string
+        tenantName:
+          type: string
+        role:
+          type: string
+          enum: [admin, operator]
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - token
+        - user
+
+    MeResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - user
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, operator]
+        tenantId:
+          type: string
+        tenantName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - role
+        - tenantId
+
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [admin, operator]
+      required:
+        - email
+        - password
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        ip:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, unknown]
+        tenantId:
+          type: string
+        lastSeen:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - ip
+        - status
+        - tenantId
+        - createdAt
+
+    CreateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        ip:
+          type: string
+      required:
+        - name
+        - ip
+
+    PingResponse:
+      type: object
+      properties:
+        deviceId:
+          type: string
+        status:
+          type: string
+          enum: [online, offline]
+        online:
+          type: boolean
+      required:
+        - deviceId
+        - status
+        - online
+
+    CommandRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - screen_toggle
+            - screen_on
+            - screen_off
+            - home
+            - back
+            - reboot
+            - open_app
+            - install_apk
+            - uninstall_app
+            - list_apps
+            - sync_apps
+            - keyevent
+            - kiosk_enable
+        param:
+          type: string
+        keycode:
+          type: integer
+      required:
+        - action
+
+    CommandResponse:
+      type: object
+      properties:
+        commandId:
+          type: string
+        status:
+          type: string
+          enum: [success, error]
+        output:
+          type: string
+        error:
+          type: string
+      required:
+        - commandId
+        - status
+
+    Command:
+      type: object
+      properties:
+        id:
+          type: string
+        deviceId:
+          type: string
+        command:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, success, error]
+        response:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - deviceId
+        - command
+        - status
+        - createdAt
+
+    App:
+      type: object
+      properties:
+        id:
+          type: string
+        deviceId:
+          type: string
+        packageName:
+          type: string
+        appName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - deviceId
+        - packageName
+        - createdAt
+
+    Log:
+      type: object
+      properties:
+        id:
+          type: string
+        deviceId:
+          type: string
+        message:
+          type: string
+        level:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - deviceId
+        - message
+        - level
+        - createdAt
+
+    ScheduledTask:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        deviceId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        cronExpression:
+          type: string
+        action:
+          type: string
+        actionParam:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - tenantId
+        - name
+        - cronExpression
+        - action
+        - enabled
+        - createdAt
+
+    CreateScheduledTaskRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        deviceId:
+          type: string
+        cronExpression:
+          type: string
+        action:
+          type: string
+        actionParam:
+          type: string
+        enabled:
+          type: boolean
+      required:
+        - name
+        - cronExpression
+        - action

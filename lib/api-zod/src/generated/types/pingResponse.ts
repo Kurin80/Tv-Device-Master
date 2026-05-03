@@ -5,7 +5,10 @@
  * MDM Platform API - Mobile Device Management para Android TV
  * OpenAPI spec version: 0.1.0
  */
+import type { PingResponseStatus } from "./pingResponseStatus";
 
-export interface HealthStatus {
-  status: string;
+export interface PingResponse {
+  deviceId: string;
+  status: PingResponseStatus;
+  online: boolean;
 }

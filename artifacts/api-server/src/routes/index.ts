@@ -1,8 +1,22 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
+import healthRouter from "./health.js";
+import authRouter from "./auth.js";
+import devicesRouter from "./devices.js";
+import commandsRouter from "./commands.js";
+import appsRouter from "./apps.js";
+import logsRouter from "./logs.js";
+import usersRouter from "./users.js";
+import scheduledTasksRouter from "./scheduled-tasks.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
+router.use(devicesRouter);
+router.use(commandsRouter);
+router.use(appsRouter);
+router.use(logsRouter);
+router.use(usersRouter);
+router.use(scheduledTasksRouter);
 
 export default router;

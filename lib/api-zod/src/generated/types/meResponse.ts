@@ -5,7 +5,8 @@
  * MDM Platform API - Mobile Device Management para Android TV
  * OpenAPI spec version: 0.1.0
  */
+import type { UserProfile } from "./userProfile";
 
-export interface HealthStatus {
-  status: string;
+export interface MeResponse {
+  user: UserProfile;
 }
