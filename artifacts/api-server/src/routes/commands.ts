@@ -79,9 +79,13 @@ router.post("/devices/:id/command", requireAuth, commandLimiter, async (req: Req
   try {
     switch (action) {
       case "screen_toggle":
-      case "screen_on":
-      case "screen_off":
         result = await adb.toggleScreen(device.ip);
+        break;
+      case "screen_on":
+        result = await adb.screenOn(device.ip);
+        break;
+      case "screen_off":
+        result = await adb.screenOff(device.ip);
         break;
       case "home":
         result = await adb.pressHome(device.ip);

@@ -63,6 +63,12 @@ function simulateAdb(args: string): AdbResult {
   if (args.includes("keyevent 26")) {
     return { success: true, output: "Screen toggled (simulation)" };
   }
+  if (args.includes("keyevent 224")) {
+    return { success: true, output: "Screen on (simulation)" };
+  }
+  if (args.includes("keyevent 223")) {
+    return { success: true, output: "Screen off (simulation)" };
+  }
   if (args.includes("keyevent 3")) {
     return { success: true, output: "Home pressed (simulation)" };
   }
@@ -95,6 +101,19 @@ export async function toggleScreen(ip: string): Promise<AdbResult> {
   const safeIp = sanitizeIp(ip);
   await runAdb(`connect ${safeIp}`);
   return runAdb(`-s ${safeIp} shell input keyevent 26`);
+}
+
+// Keyevent 224 = KEYCODE_WAKEUP (screen on), 223 = KEYCODE_SLEEP (screen off)
+export async function screenOn(ip: string): Promise<AdbResult> {
+  const safeIp = sanitizeIp(ip);
+  await runAdb(`connect ${safeIp}`);
+  return runAdb(`-s ${safeIp} shell input keyevent 224`);
+}
+
+export async function screenOff(ip: string): Promise<AdbResult> {
+  const safeIp = sanitizeIp(ip);
+  await runAdb(`connect ${safeIp}`);
+  return runAdb(`-s ${safeIp} shell input keyevent 223`);
 }
 
 export async function pressHome(ip: string): Promise<AdbResult> {

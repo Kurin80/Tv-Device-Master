@@ -38,15 +38,3 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   next();
 }
 
-export function requireTenantAccess(req: Request, res: Response, next: NextFunction): void {
-  if (!req.user) {
-    res.status(401).json({ error: "No autenticado" });
-    return;
-  }
-  const requestedTenantId = req.params["tenantId"] ?? req.body?.tenantId;
-  if (requestedTenantId && requestedTenantId !== req.user.tenantId) {
-    res.status(403).json({ error: "Acceso denegado a este tenant" });
-    return;
-  }
-  next();
-}

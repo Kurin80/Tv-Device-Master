@@ -36,6 +36,16 @@ router.post("/users", requireAuth, requireAdmin, apiLimiter, async (req: Request
   }
 
   const { email, password, role } = parsed.data;
+
+  const existing = await db.select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.email, email.toLowerCase()))
+    .limit(1);
+  if (existing.length > 0) {
+    res.status(409).json({ error: "El email ya está registrado" });
+    return;
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const [user] = await db.insert(usersTable).values({
