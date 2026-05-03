@@ -1,19 +1,22 @@
-import { useState, useEffect } from "react";
-import { useGetAllLogs, getGetAllLogsQueryKey } from "@workspace/api-client-react";
+import { useState, useEffect, useRef } from "react";
+import { useGetAllLogs, useGetDevices, getGetAllLogsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Terminal, Clock, Filter, Search, Activity } from "lucide-react";
+import { Terminal, Clock, Filter, Search, Activity, MonitorSmartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { socket } from "@/lib/socket";
 
 export default function Logs() {
   const [filterLevel, setFilterLevel] = useState<string>("all");
+  const [filterDevice, setFilterDevice] = useState<string>("all");
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
+  const logsBottomRef = useRef<HTMLDivElement>(null);
   
   const { data: logs, isLoading } = useGetAllLogs({ limit: 200 });
+  const { data: devices } = useGetDevices();
 
   useEffect(() => {
     socket.connect();
@@ -30,11 +33,19 @@ export default function Logs() {
     };
   }, [queryClient]);
 
+  // Auto-scroll to bottom whenever new logs arrive
+  useEffect(() => {
+    if (logsBottomRef.current) {
+      logsBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
   const filteredLogs = logs?.filter(log => {
     const matchesLevel = filterLevel === "all" || log.level.toLowerCase() === filterLevel.toLowerCase();
+    const matchesDevice = filterDevice === "all" || log.deviceId === filterDevice;
     const matchesSearch = log.message.toLowerCase().includes(search.toLowerCase()) || 
                           log.deviceId.toLowerCase().includes(search.toLowerCase());
-    return matchesLevel && matchesSearch;
+    return matchesLevel && matchesDevice && matchesSearch;
   });
 
   return (
@@ -46,7 +57,7 @@ export default function Logs() {
             <p className="text-muted-foreground font-mono text-sm">Telemetría y eventos del tenant</p>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 text-xs text-emerald-500 font-mono bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">
               <Activity className="w-3 h-3 animate-pulse" />
               EN VIVO
@@ -57,12 +68,24 @@ export default function Logs() {
                 placeholder="Buscar eventos..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 w-[250px] font-mono text-sm bg-card border-border"
+                className="pl-9 w-[200px] font-mono text-sm bg-card border-border"
                 data-testid="input-search-logs"
               />
             </div>
+            <Select value={filterDevice} onValueChange={setFilterDevice}>
+              <SelectTrigger className="w-[160px] font-mono text-sm bg-card border-border" data-testid="select-device-filter">
+                <MonitorSmartphone className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Dispositivo" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border font-mono">
+                <SelectItem value="all">TODOS LOS EQUIPOS</SelectItem>
+                {devices?.map(d => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={filterLevel} onValueChange={setFilterLevel}>
-              <SelectTrigger className="w-[140px] font-mono text-sm bg-card border-border">
+              <SelectTrigger className="w-[130px] font-mono text-sm bg-card border-border">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Nivel" />
               </SelectTrigger>
@@ -89,7 +112,7 @@ export default function Logs() {
             <div className="min-w-[800px] relative z-0 p-4 font-mono text-sm">
               <div className="grid grid-cols-[180px_200px_80px_1fr] gap-4 text-white/40 mb-4 pb-2 border-b border-white/10 uppercase tracking-wider text-xs font-bold sticky top-0 bg-[#0A0E17]/90 backdrop-blur">
                 <div>Fecha/Hora</div>
-                <div>ID Dispositivo</div>
+                <div>Dispositivo</div>
                 <div>Nivel</div>
                 <div>Mensaje</div>
               </div>
@@ -100,23 +123,30 @@ export default function Logs() {
                 ) : filteredLogs?.length === 0 ? (
                   <div className="text-white/30 text-center py-8">SIN REGISTROS</div>
                 ) : (
-                  filteredLogs?.map((log) => (
-                    <div key={log.id} className="grid grid-cols-[180px_200px_80px_1fr] gap-4 text-gray-300 py-1 hover:bg-white/5 border-b border-white/5 last:border-0" data-testid={`log-row-${log.id}`}>
-                      <div className="opacity-60 flex items-center gap-2">
-                        <Clock className="w-3 h-3" />
-                        {new Date(log.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })}
+                  filteredLogs?.map((log) => {
+                    const device = devices?.find(d => d.id === log.deviceId);
+                    return (
+                      <div key={log.id} className="grid grid-cols-[180px_200px_80px_1fr] gap-4 text-gray-300 py-1 hover:bg-white/5 border-b border-white/5 last:border-0" data-testid={`log-row-${log.id}`}>
+                        <div className="opacity-60 flex items-center gap-2">
+                          <Clock className="w-3 h-3" />
+                          {new Date(log.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })}
+                        </div>
+                        <div className="truncate opacity-80" title={log.deviceId}>
+                          {device?.name || log.deviceId.substring(0, 8)}
+                        </div>
+                        <div className={`font-bold ${
+                          log.level === 'error' ? 'text-destructive' : 
+                          log.level === 'warn' ? 'text-amber-500' : 'text-blue-400'
+                        }`}>
+                          {log.level.toUpperCase()}
+                        </div>
+                        <div className="break-all">{log.message}</div>
                       </div>
-                      <div className="truncate opacity-80" title={log.deviceId}>{log.deviceId}</div>
-                      <div className={`font-bold ${
-                        log.level === 'error' ? 'text-destructive' : 
-                        log.level === 'warn' ? 'text-amber-500' : 'text-blue-400'
-                      }`}>
-                        {log.level.toUpperCase()}
-                      </div>
-                      <div className="break-all">{log.message}</div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
+                {/* Auto-scroll anchor */}
+                <div ref={logsBottomRef} />
               </div>
             </div>
           </CardContent>

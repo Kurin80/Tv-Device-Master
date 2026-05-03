@@ -11,7 +11,7 @@ version = "1.0.0"
 
 [[services]]
 name = "web"
-paths = [ "/", "/socket.io" ]
+paths = [ "/" ]
 localPort = 23183
 
 [services.development]

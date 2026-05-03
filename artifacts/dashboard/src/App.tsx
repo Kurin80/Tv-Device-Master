@@ -18,9 +18,13 @@ import Schedule from "@/pages/schedule";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { token, isLoading } = useAuth();
+  const { user, isLoading, token } = useAuth();
+  // Still loading the user profile — wait
   if (isLoading) return null;
+  // No token at all → redirect immediately
   if (!token) return <Redirect to="/login" />;
+  // Token exists but user hasn't resolved yet (brief flash guard)
+  if (!user) return null;
   return <Component />;
 }
 

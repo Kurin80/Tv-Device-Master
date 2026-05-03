@@ -13,10 +13,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [_, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const token = localStorage.getItem('mdm_token');
 
-  const { data: meResponse, isLoading: isMeLoading } = useGetMe({
+  const { data: meResponse, isLoading: isMeLoading, isError: isMeError } = useGetMe({
     query: {
       enabled: !!token,
       retry: false,
@@ -34,13 +34,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLocation('/login');
   }, [setLocation]);
 
-  const isLoading = !!token && isMeLoading;
-
+  // If token is present but /auth/me fails (expired/invalid), clear token and redirect
   useEffect(() => {
-    if (!token && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+    if (token && isMeError) {
+      localStorage.removeItem('mdm_token');
+      setLocation('/login');
+    }
+  }, [token, isMeError, setLocation]);
+
+  // If no token, redirect to login (unless already on public pages)
+  useEffect(() => {
+    const path = window.location.pathname;
+    const isPublic = path.endsWith('/login') || path.endsWith('/register');
+    if (!token && !isPublic) {
       setLocation('/login');
     }
   }, [token, setLocation]);
+
+  const isLoading = !!token && isMeLoading;
 
   return (
     <AuthContext.Provider value={{ user: meResponse?.user || null, token, login, logout, isLoading }}>

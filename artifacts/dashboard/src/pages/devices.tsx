@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Search, MoreVertical, Trash, Edit, MonitorSmartphone, Wifi, WifiOff, HelpCircle } from "lucide-react";
+import { Plus, Search, MoreVertical, Trash, Edit, MonitorSmartphone, Wifi, WifiOff, HelpCircle, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
@@ -26,6 +27,7 @@ const deviceSchema = z.object({
 
 export default function Devices() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<string | null>(null);
   
@@ -53,10 +55,11 @@ export default function Devices() {
     defaultValues: { name: "", ip: "" },
   });
 
-  const filteredDevices = devices?.filter(d => 
-    d.name.toLowerCase().includes(search.toLowerCase()) || 
-    d.ip.includes(search)
-  );
+  const filteredDevices = devices?.filter(d => {
+    const matchesSearch = d.name.toLowerCase().includes(search.toLowerCase()) || d.ip.includes(search);
+    const matchesStatus = statusFilter === "all" || d.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const onSubmit = (values: z.infer<typeof deviceSchema>) => {
     if (editingDevice) {
@@ -180,15 +183,30 @@ export default function Devices() {
           </Dialog>
         </div>
 
-        <div className="flex items-center space-x-2 bg-card border border-border rounded-md px-3 py-2 w-full max-w-md">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <Input 
-            className="border-0 focus-visible:ring-0 px-0 h-auto font-mono text-sm bg-transparent" 
-            placeholder="Buscar por nombre o IP..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            data-testid="input-search-devices"
-          />
+        {/* Barra de búsqueda y filtros */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex items-center space-x-2 bg-card border border-border rounded-md px-3 py-2 flex-1 max-w-md">
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+            <Input 
+              className="border-0 focus-visible:ring-0 px-0 h-auto font-mono text-sm bg-transparent" 
+              placeholder="Buscar por nombre o IP..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="input-search-devices"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] font-mono text-sm bg-card border-border" data-testid="select-status-filter">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border font-mono">
+              <SelectItem value="all">TODOS LOS ESTADOS</SelectItem>
+              <SelectItem value="online" className="text-emerald-500">EN LÍNEA</SelectItem>
+              <SelectItem value="offline" className="text-destructive">DESCONECTADO</SelectItem>
+              <SelectItem value="unknown" className="text-muted-foreground">DESCONOCIDO</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
