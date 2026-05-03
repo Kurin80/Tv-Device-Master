@@ -4,26 +4,23 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-const rawPort = process.env.PORT;
+const basePath = process.env.BASE_PATH ?? "/";
 
-if (!rawPort) {
+// PORT is only required when running the dev server, not during production build.
+// The production artifact is served as a static site so no port is needed at build time.
+const rawPort = process.env.PORT;
+const isBuild = process.argv.includes("build");
+
+if (!isBuild && !rawPort) {
   throw new Error(
     "PORT environment variable is required but was not provided.",
   );
 }
 
-const port = Number(rawPort);
+const port = rawPort ? Number(rawPort) : 3000;
 
-if (Number.isNaN(port) || port <= 0) {
+if (!isBuild && (Number.isNaN(port) || port <= 0)) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
 }
 
 export default defineConfig({
@@ -67,8 +64,8 @@ export default defineConfig({
       strict: true,
     },
     proxy: {
-      '/socket.io': {
-        target: 'http://localhost:8080',
+      "/socket.io": {
+        target: "http://localhost:8080",
         ws: true,
         changeOrigin: true,
       },

@@ -87,13 +87,13 @@ Tablas principales con `tenant_id` en todas las entidades de negocio:
 
 ## Environment Variables
 
-| Variable | Description | Default |
+| Variable | Description | Required |
 |---|---|---|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `PORT` | Server port | Required |
-| `JWT_SECRET` | JWT signing secret | dev-secret (change in prod!) |
-| `ADB_SIMULATION` | Enable ADB mock mode | `false` |
-| `ADB_TIMEOUT_MS` | Timeout for ADB commands | `10000` |
+| `DATABASE_URL` | PostgreSQL connection string | Yes (auto-provisioned by Replit) |
+| `PORT` | Server port (dev server only) | Yes (auto-assigned by Replit) |
+| `JWT_SECRET` | JWT signing secret — must be a long random string in production | Yes |
+| `ADB_SIMULATION` | Set `true` for mock ADB (no real TV needed), `false` for real devices | Default: `true` in dev |
+| `ADB_TIMEOUT_MS` | ADB command timeout in milliseconds | Default: `10000` |
 
 ## API Endpoints
 
@@ -161,9 +161,11 @@ Tras ejecutar el seed:
 
 - JWT con expiración de 7 días
 - Middleware valida tenant_id en cada request (aislamiento multi-tenant)
+- Express `trust proxy` habilitado — necesario detrás del reverse proxy de Replit para que express-rate-limit funcione correctamente
 - Sanitización de IPs y package names antes de ejecutar ADB
 - Rate limiting: 20 req/15min en auth, 200 req/min en API, 30 req/10s en comandos
 - Roles: admin puede gestionar usuarios, operador solo puede controlar dispositivos
+- CORS configurado con `credentials: true` (origin reflectivo) — seguridad via JWT Bearer token
 
 ## Activar ADB en Android TV
 
@@ -174,6 +176,32 @@ Tras ejecutar el seed:
 5. Conectar con: `adb connect <IP_TV>`
 6. Registrar el dispositivo en la plataforma con esa IP
 
-## Deploy en Replit
+## Deploy en Producción (Replit)
 
-El servidor usa `process.env.PORT` para el puerto y `process.env.DATABASE_URL` para la BD. Asegúrate de configurar `JWT_SECRET` en producción con un valor seguro y aleatorio.
+### Requisitos previos
+1. **JWT_SECRET**: Crear un secreto en Replit Secrets con un valor aleatorio largo (mínimo 32 caracteres). El servidor lanzará un error al iniciar si falta.
+2. **DATABASE_URL**: Automáticamente provisto por Replit al publicar.
+3. **ADB_SIMULATION**: Mantener `true` hasta tener TVs reales conectadas. Cambiar a `false` y configurar las IPs reales de los dispositivos en la BD.
+
+### Tipo de despliegue: VM (Always Running)
+Esta plataforma **requiere** tipo de despliegue **VM** (no Autoscale) porque:
+- Socket.io mantiene conexiones WebSocket persistentes que se pierden con Autoscale
+- El heartbeat de dispositivos (cada 60s) necesita un proceso permanente
+- Los cron jobs de tareas programadas viven en memoria y se perderían al escalar
+
+Al publicar, en la sección **Advanced** del panel de publicación, seleccionar **VM (Always Running)**.
+
+### Pasos para publicar
+1. Verificar que todos los workflows estén corriendo sin errores
+2. En el panel lateral, hacer clic en **Publish**
+3. En la sección Advanced, seleccionar **VM** como tipo de despliegue
+4. Confirmar que `JWT_SECRET` está configurado en Replit Secrets
+5. Hacer clic en **Deploy**
+
+La plataforma quedará disponible en `https://<nombre>.replit.app`.
+
+### ADB en producción con TVs reales
+1. Cambiar el secreto `ADB_SIMULATION` a `false` en producción
+2. Asegurarse que el servidor de producción tenga acceso de red a las IPs de los TVs
+3. Los TVs deben estar en la misma red o accesibles vía VPN desde el servidor
+4. El binario `adb` está instalado en el entorno Nix (`android-tools`)

@@ -6,6 +6,11 @@ import { logger } from "./lib/logger.js";
 
 const app: Express = express();
 
+// Trust the first proxy hop (Replit's reverse proxy).
+// Required for express-rate-limit to correctly read X-Forwarded-For
+// and for req.ip / req.protocol to reflect the real client values.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
@@ -26,11 +31,18 @@ app.use(
   }),
 );
 
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+// Allow all origins — security is enforced via Bearer JWT on every route.
+// Limiting by origin would break the mobile app (Expo) which sends requests
+// from a different origin than the web dashboard.
+app.use(
+  cors({
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  }),
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
