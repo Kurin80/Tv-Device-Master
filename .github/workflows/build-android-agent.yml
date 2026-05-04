@@ -18,6 +18,8 @@ jobs:
   build:
     name: Build Debug & Release APKs
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: -Xmx4096m -Dkotlin.daemon.jvm.options=-Xmx2048m
 
     steps:
       - name: Checkout repository
@@ -75,6 +77,12 @@ jobs:
           tail -n 120 gradle-assemble-debug.log 2>/dev/null || true
           echo "---- assembleRelease (tail) ----"
           tail -n 120 gradle-assemble-release.log 2>/dev/null || true
+          {
+            echo "## assembleDebug (últimas líneas)"
+            echo '```text'
+            tail -n 200 gradle-assemble-debug.log 2>/dev/null || true
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
