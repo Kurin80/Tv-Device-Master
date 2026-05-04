@@ -9,6 +9,7 @@
     <!-- Camera (QR enrollment) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <!-- Foreground service -->
@@ -35,7 +36,7 @@
     <application
         android:name=".MdmApplication"
         android:allowBackup="false"
-        android:banner="@drawable/ic_launcher_app"
+        android:banner="@drawable/ic_tv_banner"
         android:icon="@drawable/ic_launcher_app"
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_launcher_app"
