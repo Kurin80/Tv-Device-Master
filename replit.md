@@ -181,6 +181,39 @@ Tras ejecutar el seed:
 - Roles: admin puede gestionar usuarios, operador solo puede controlar dispositivos
 - CORS configurado con `credentials: true` (origin reflectivo) — seguridad via JWT Bearer token
 
+## Agente Nativo Android (android-agent/)
+
+App nativa Kotlin en `android-agent/` con control total del dispositivo cuando se instala como **Device Owner**.
+
+### Comandos disponibles
+| Comando | Sin Device Owner | Con Device Owner |
+|---------|:---:|:---:|
+| `open_app`, `home`, `back`, `screen_on`, `list_apps` | ✅ | ✅ |
+| `kiosk_enable`, `kiosk_disable` | ⚠️ parcial | ✅ completo |
+| `screen_off`, `reboot` | ❌ | ✅ |
+| `install_apk`, `uninstall_app` | ⚠️ con prompt | ✅ silencioso |
+
+### Compilar e instalar
+```bash
+cd android-agent
+./setup.sh          # descarga gradle-wrapper.jar (solo primera vez)
+./gradlew assembleDebug
+adb connect <TV_IP>:5555
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Activar Device Owner (una sola vez — requiere no tener cuentas Google en la TV)
+```bash
+adb shell dpm set-device-owner com.mdm.androidagent/.MdmDeviceAdminReceiver
+```
+
+### Archivos clave
+- `CommandExecutor.kt` — ejecuta cada comando MDM localmente
+- `MdmPollingService.kt` — ForegroundService: heartbeat 30s + poll 10s
+- `KioskActivity.kt` — `startLockTask()` / `stopLockTask()` kiosk completo
+- `ApkInstaller.kt` — descarga + PackageInstaller API (silent si Device Owner)
+- `EnrollmentActivity.kt` — escáner QR con CameraX + ML Kit
+
 ## Activar ADB en Android TV
 
 1. En el Android TV, ir a **Configuración → Acerca del dispositivo**

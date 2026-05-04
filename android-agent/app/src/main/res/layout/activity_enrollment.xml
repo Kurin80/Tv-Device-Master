@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- Camera preview -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/cameraPreview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Semi-transparent overlay -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/overlay">
+
+        <!-- Top bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MDM Agent"
+                android:textColor="@color/foreground"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Inscripción de dispositivo"
+                android:textColor="@color/muted"
+                android:textSize="16sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- QR frame (center) -->
+        <FrameLayout
+            android:layout_width="240dp"
+            android:layout_height="240dp"
+            android:layout_gravity="center">
+
+            <View android:id="@+id/cornerTL"
+                android:layout_width="32dp" android:layout_height="32dp"
+                android:layout_gravity="top|start"
+                android:background="@drawable/corner_tl" />
+            <View android:id="@+id/cornerTR"
+                android:layout_width="32dp" android:layout_height="32dp"
+                android:layout_gravity="top|end"
+                android:background="@drawable/corner_tr" />
+            <View android:id="@+id/cornerBL"
+                android:layout_width="32dp" android:layout_height="32dp"
+                android:layout_gravity="bottom|start"
+                android:background="@drawable/corner_bl" />
+            <View android:id="@+id/cornerBR"
+                android:layout_width="32dp" android:layout_height="32dp"
+                android:layout_gravity="bottom|end"
+                android:background="@drawable/corner_br" />
+        </FrameLayout>
+
+        <!-- Bottom bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Apunta al código QR del panel MDM"
+                android:textColor="@color/foreground"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="El dispositivo se inscribirá automáticamente"
+                android:textColor="@color/muted"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:layout_marginTop="8dp" />
+
+            <!-- Progress (shown during enrollment) -->
+            <ProgressBar
+                android:id="@+id/enrollProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_marginTop="16dp"
+                android:indeterminateTint="@color/primary" />
+
+            <TextView
+                android:id="@+id/enrollStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:textColor="@color/primary"
+                android:textSize="18sp"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:id="@+id/enrollError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:textColor="@color/error"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:layout_marginTop="8dp" />
+
+            <Button
+                android:id="@+id/btnRetry"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reintentar"
+                android:visibility="gone"
+                android:layout_marginTop="16dp"
+                android:backgroundTint="@color/primary" />
+        </LinearLayout>
+
+    </FrameLayout>
+</FrameLayout>

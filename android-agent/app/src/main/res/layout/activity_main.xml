@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="48dp">
+
+        <!-- Status indicator -->
+        <LinearLayout
+            android:id="@+id/statusRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginBottom="32dp">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:background="@drawable/shape_dot"
+                android:layout_marginEnd="12dp" />
+
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_online"
+                android:textColor="@color/success"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Device info card -->
+        <LinearLayout
+            android:id="@+id/cardDevice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/shape_card"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:layout_marginBottom="16dp"
+            android:maxWidth="640dp">
+
+            <include layout="@layout/row_info"
+                android:id="@+id/rowDeviceName" />
+            <include layout="@layout/row_info"
+                android:id="@+id/rowServerUrl" />
+            <include layout="@layout/row_info"
+                android:id="@+id/rowDeviceId" />
+        </LinearLayout>
+
+        <!-- Activity card -->
+        <LinearLayout
+            android:id="@+id/cardActivity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/shape_card"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:layout_marginBottom="24dp"
+            android:maxWidth="640dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Actividad del Agente"
+                android:textColor="@color/muted"
+                android:textSize="14sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp" />
+
+            <include layout="@layout/row_info"
+                android:id="@+id/rowHeartbeat" />
+            <include layout="@layout/row_info"
+                android:id="@+id/rowCommands" />
+            <include layout="@layout/row_info"
+                android:id="@+id/rowLastCommand" />
+        </LinearLayout>
+
+        <!-- Info text -->
+        <TextView
+            android:id="@+id/infoText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="El agente envía un heartbeat cada 30 s y comprueba comandos cada 10 s.\nControlable desde cualquier lugar por Internet."
+            android:textColor="@color/muted"
+            android:textSize="16sp"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginBottom="32dp"
+            android:maxWidth="600dp" />
+
+        <!-- Unenroll button -->
+        <Button
+            android:id="@+id/btnUnenroll"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_unenroll"
+            android:textColor="@color/error"
+            app:strokeColor="@color/error"
+            android:paddingStart="48dp"
+            android:paddingEnd="48dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
+
+    </LinearLayout>
+</ScrollView>

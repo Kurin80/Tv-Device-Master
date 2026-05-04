@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MDM Agent</string>
+    <string name="device_admin_label">MDM Device Administrator</string>
+    <string name="device_admin_description">Permite que el agente MDM gestione este dispositivo remotamente: modo kiosco, bloqueo de pantalla, reinicio y gestión de aplicaciones.</string>
+
+    <string name="btn_enroll">Escanear código QR</string>
+    <string name="btn_unenroll">Desinscribir dispositivo</string>
+    <string name="scanning_hint">Apunta la cámara al código QR del panel MDM</string>
+    <string name="enrolling">Inscribiendo dispositivo…</string>
+    <string name="status_online">Dispositivo Gestionado</string>
+    <string name="status_offline">Desconectado</string>
+    <string name="notification_title">MDM Agent</string>
+    <string name="notification_text">Dispositivo gestionado — activo</string>
+    <string name="channel_id">mdm_agent_channel</string>
+    <string name="channel_name">MDM Agent Service</string>
+</resources>
