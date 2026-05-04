@@ -52,3 +52,4 @@ Thumbs.db
 android-agent/.gradle/
 android-agent/**/build/
 android-agent/local.properties
+android-agent/.ci-tools/
