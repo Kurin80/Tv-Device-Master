@@ -29,7 +29,29 @@ El agente **nunca requiere conexión entrante** — funciona desde cualquier red
 
 ## Compilar el APK
 
-### 1. Descargar el Gradle wrapper (solo la primera vez)
+### Opción A — GitHub Actions (recomendado, sin instalación local)
+
+Cada push a `main` dispara el workflow **Build Android Agent APK**
+automáticamente. Para descargar el APK:
+
+1. Abre la pestaña **Actions** del repositorio en GitHub.
+2. Selecciona el workflow **Build Android Agent APK** en la barra lateral.
+3. Abre la ejecución más reciente y descarga el artefacto
+   `mdm-agent-debug-<sha>` o `mdm-agent-release-<sha>`.
+
+También puedes lanzar el build manualmente desde la UI de GitHub
+(**Actions → Build Android Agent APK → Run workflow**) sin necesidad de hacer
+ningún push.
+
+> Los releases automáticos (tag `vX.Y.Z-<sha>`) se crean en la sección
+> **Releases** del repositorio con ambos APKs adjuntos cada vez que se fusiona
+> un commit a `main`.
+
+---
+
+### Opción B — Compilación local
+
+#### 1. Descargar el Gradle wrapper (solo la primera vez)
 
 ```bash
 cd android-agent
@@ -37,7 +59,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-### 2. Compilar
+#### 2. Compilar
 
 ```bash
 # Debug (para desarrollo y pruebas)
