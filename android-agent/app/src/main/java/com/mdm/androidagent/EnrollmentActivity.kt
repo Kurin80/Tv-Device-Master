@@ -132,14 +132,12 @@ class EnrollmentActivity : AppCompatActivity() {
             cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) ->
                 CameraSelector.DEFAULT_FRONT_CAMERA
             else -> {
-                // Last resort: accept any camera reported by the system (USB webcams, etc.)
-                val available = cameraProvider.availableCameraInfos
-                if (available.isEmpty()) throw Exception("No hay ninguna cámara disponible en este dispositivo")
-                Log.w(TAG, "No standard camera found; using first available of ${available.size}")
-                // Build a selector that matches the first available camera by index
-                CameraSelector.Builder()
-                    .addCameraFilter { cameras -> cameras.take(1) }
-                    .build()
+                // Sin back/front estándar (algunos firmwares TV / USB exponen cámara “rara”).
+                // Evitamos CameraFilter experimental aquí; para enroll usa una cámara sistema estándar.
+                throw Exception(
+                    "No se detectó cámara frontal ni trasera estándar. " +
+                        "Conecta una webcam USB reconocida como CAMERA y reinicia la app."
+                )
             }
         }
     }
