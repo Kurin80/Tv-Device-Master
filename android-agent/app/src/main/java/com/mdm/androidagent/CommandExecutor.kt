@@ -59,7 +59,7 @@ class CommandExecutor(private val context: Context) {
             "uninstall_app"        -> uninstallApp(param)
             "open_app"             -> openApp(param)
             "home"                 -> goHome()
-            "back"                 -> sendKey(KeyEvent.KEYCODE_BACK)
+            "back"                 -> sendKey(KeyEvent.KEYCODE_BACK)  // suspend
             "keyevent"             -> keyevent(param)
             else                   -> CommandResult("error", "Comando '$command' no reconocido")
         }
@@ -127,10 +127,14 @@ class CommandExecutor(private val context: Context) {
     private fun screenOn(): CommandResult {
         return try {
             val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+
+            // Step 1: wake the screen
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                // API 27+: use wakeUp
-                pm.wakeUp(android.os.SystemClock.uptimeMillis(),
-                    PowerManager.WAKE_REASON_APPLICATION, TAG)
+                pm.wakeUp(
+                    android.os.SystemClock.uptimeMillis(),
+                    PowerManager.WAKE_REASON_APPLICATION,
+                    TAG
+                )
             } else {
                 val wl = pm.newWakeLock(
                     PowerManager.SCREEN_BRIGHT_WAKE_LOCK
@@ -138,10 +142,22 @@ class CommandExecutor(private val context: Context) {
                             or PowerManager.ON_AFTER_RELEASE,
                     "$TAG:screenOn"
                 )
-                wl.acquire(3_000)
+                wl.acquire(3_000L)
                 wl.release()
             }
-            CommandResult("success", "Pantalla encendida")
+
+            // Step 2: dismiss keyguard so the screen is actually usable.
+            // KeyguardManager.newKeyguardLock() is deprecated but is the only
+            // approach that works from a non-Activity context (Service/CommandExecutor).
+            // On Device Owner we additionally clear the keyguard via DPM for reliability.
+            val km = context.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+            km.newKeyguardLock("$TAG:screenOn").disableKeyguard()
+
+            if (isDeviceOwner && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                dpm.setKeyguardDisabled(adminComponent, false) // re-enable after dismiss
+            }
+
+            CommandResult("success", "Pantalla encendida y keyguard descartado")
         } catch (e: Exception) {
             CommandResult("error", e.message ?: "Error al encender pantalla")
         }
@@ -274,17 +290,20 @@ class CommandExecutor(private val context: Context) {
         }
     }
 
-    private fun keyevent(param: String?): CommandResult {
+    private suspend fun keyevent(param: String?): CommandResult {
         val keycode = param?.toIntOrNull()
             ?: return CommandResult("error", "keycode numérico requerido (ej. 3 para HOME)")
         return sendKey(keycode)
     }
 
-    private fun sendKey(keycode: Int): CommandResult {
-        return try {
-            Thread {
-                android.app.Instrumentation().sendKeyDownUpSync(keycode)
-            }.start()
+    /**
+     * Sends a key event synchronously on a background thread.
+     * Instrumentation.sendKeyDownUpSync() must NOT be called on the main thread,
+     * but it must complete (and throw) before we can report success or failure.
+     */
+    private suspend fun sendKey(keycode: Int): CommandResult = withContext(Dispatchers.Default) {
+        try {
+            android.app.Instrumentation().sendKeyDownUpSync(keycode)
             CommandResult("success", "Keyevent $keycode enviado")
         } catch (e: Exception) {
             CommandResult("error", e.message ?: "Error al enviar keyevent $keycode")
