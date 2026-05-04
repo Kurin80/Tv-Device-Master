@@ -55,6 +55,8 @@ El repositorio incluye `gradle/wrapper/gradle-wrapper.jar` y `gradlew.bat`, así
 
 **Requisito:** **JDK 17** (Android Gradle Plugin 8.x no funciona con Java 8). Si `JAVA_HOME` apunta a una carpeta que ya no existe, Gradle fallará hasta que lo corrijas o uses el script de Windows de abajo.
 
+En tu PC también necesitas el **Android SDK** (platform API 34 y build-tools 34.x): lo más simple es instalar **Android Studio** y abrir una vez la carpeta `android-agent` para que descargue los componentes, o definir `ANDROID_HOME` apuntando al SDK (`File → Settings → Android SDK → ubicación`).
+
 #### Linux / macOS
 
 ```bash

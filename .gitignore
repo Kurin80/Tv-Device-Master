@@ -51,3 +51,4 @@ Thumbs.db
 # Android / Gradle (caché local, no versionar)
 android-agent/.gradle/
 android-agent/**/build/
+android-agent/local.properties

@@ -75,6 +75,42 @@ Si JAVA_HOME apunta a una carpeta borrada, corrigelo en Variables de entorno de 
 "@
 }
 
+function Resolve-AndroidSdkRoot {
+    foreach ($candidate in @(
+            $env:ANDROID_SDK_ROOT,
+            $env:ANDROID_HOME,
+            "$env:LOCALAPPDATA\Android\Sdk",
+            "$env:USERPROFILE\AppData\Local\Android\Sdk"
+        )) {
+        if (-not $candidate) { continue }
+        if (Test-Path (Join-Path $candidate 'platforms')) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
+$sdkRoot = Resolve-AndroidSdkRoot
+if (-not $sdkRoot) {
+    Write-Error @"
+No se encontro Android SDK (carpeta platforms).
+
+Instala Android Studio y abre SDK Manager, o define ANDROID_HOME / ANDROID_SDK_ROOT
+apuntando al SDK (suele ser %LOCALAPPDATA%\Android\Sdk).
+"@
+}
+if (-not (Test-Path (Join-Path $sdkRoot 'platforms\android-34'))) {
+    Write-Error @"
+El SDK no tiene instalada la plataforma Android 14 (API 34).
+
+En Android Studio: Settings > Android SDK > SDK Platforms > Android 14 (API 34).
+O con sdkmanager: sdkmanager `"platforms;android-34`" `"build-tools;34.0.0`"
+"@
+}
+$env:ANDROID_HOME = $sdkRoot
+$env:ANDROID_SDK_ROOT = $sdkRoot
+Write-Host "Usando Android SDK: $sdkRoot"
+
 if (-not (Test-Path 'gradle\wrapper\gradle-wrapper.jar')) {
     Write-Error 'Falta gradle\wrapper\gradle-wrapper.jar. Clona el repo completo o ejecuta setup.sh / setup Git Bash.'
 }
