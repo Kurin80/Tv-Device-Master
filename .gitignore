@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Android / Gradle (caché local, no versionar)
+android-agent/.gradle/
+android-agent/**/build/

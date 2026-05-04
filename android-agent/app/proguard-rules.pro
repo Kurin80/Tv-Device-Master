@@ -1,4 +1,6 @@
 -keep class com.mdm.androidagent.** { *; }
 -keep class com.google.mlkit.** { *; }
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
 -dontwarn okhttp3.**
 -dontwarn okio.**

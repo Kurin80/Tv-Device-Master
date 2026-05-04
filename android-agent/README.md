@@ -51,25 +51,31 @@ ningún push.
 
 ### Opción B — Compilación local
 
-#### 1. Descargar el Gradle wrapper (solo la primera vez)
+El repositorio incluye `gradle/wrapper/gradle-wrapper.jar` y `gradlew.bat`, así que **no hace falta** ejecutar `setup.sh` salvo que borres el JAR del wrapper.
+
+**Requisito:** **JDK 17** (Android Gradle Plugin 8.x no funciona con Java 8). Si `JAVA_HOME` apunta a una carpeta que ya no existe, Gradle fallará hasta que lo corrijas o uses el script de Windows de abajo.
+
+#### Linux / macOS
 
 ```bash
 cd android-agent
-chmod +x setup.sh
-./setup.sh
+chmod +x gradlew
+./gradlew assembleDebug    # o assembleRelease
 ```
 
-#### 2. Compilar
+Si falta el wrapper JAR por algún motivo: `chmod +x setup.sh && ./setup.sh`
 
-```bash
-# Debug (para desarrollo y pruebas)
-./gradlew assembleDebug
+#### Windows (PowerShell)
 
-# Release (para producción)
-./gradlew assembleRelease
+```powershell
+cd android-agent
+.\build-apk.ps1              # assembleDebug por defecto
+.\build-apk.ps1 assembleRelease
 ```
 
-El APK se genera en `app/build/outputs/apk/`.
+También puedes usar `.\gradlew.bat` directamente si `JAVA_HOME` apunta a un JDK 17 válido.
+
+El APK queda en `app/build/outputs/apk/`.
 
 ---
 
@@ -188,8 +194,9 @@ android-agent/
 │       └── res/
 │           ├── xml/device_admin_policies.xml  — Políticas de administrador
 │           └── xml/file_paths.xml             — FileProvider para APKs
-├── setup.sh          — Descarga gradle-wrapper.jar (ejecutar una sola vez)
-├── gradlew           — Gradle wrapper
+├── setup.sh          — Descarga gradle-wrapper.jar (solo si falta el JAR del repo)
+├── gradlew / gradlew.bat — Gradle wrapper
+├── build-apk.ps1     — Windows: busca JDK 17 y ejecuta Gradle
 └── README.md
 ```
 
@@ -218,3 +225,5 @@ El `deviceToken` se obtiene del servidor al inscribirse (`POST /api/devices/enro
 | El agente no aparece tras reinicio | `BOOT_COMPLETED` denegado | Verificar permisos en Ajustes de la TV |
 | `kiosk_enable` sin bloqueo real | No es Device Owner | Ejecutar comando DPM de arriba |
 | `install_apk` pide confirmación | No es Device Owner | Ejecutar comando DPM o confirmar manualmente |
+| Gradle falla con “compatible with Java 8” / “Java 11” | JDK antiguo o `JAVA_HOME` incorrecto | Instalar JDK 17 y apuntar `JAVA_HOME`; en Windows usar `build-apk.ps1` |
+| `install_apk` / descarga APK falla (HTTP o certificado propio) | Tráfico HTTP o CA interna no confiable | La app permite cleartext y CAs de usuario vía `network_security_config` |

@@ -115,16 +115,23 @@ object ApkInstaller {
                 }
             } catch (e: Exception) {
                 try { context.unregisterReceiver(receiver) } catch (_: Exception) {}
-                deferred.complete(CommandResult("error", "Error al iniciar sesión de instalación: ${e.message}"))
-            } finally {
                 apkFile.delete()
+                return@withContext CommandResult(
+                    "error",
+                    "Error al iniciar sesión de instalación: ${e.message}"
+                )
             }
 
-            withTimeoutOrNull(INSTALL_TIMEOUT_MS) { deferred.await() }
+            val result = withTimeoutOrNull(INSTALL_TIMEOUT_MS) { deferred.await() }
                 ?: run {
                     try { context.unregisterReceiver(receiver) } catch (_: Exception) {}
-                    CommandResult("error", "Timeout esperando resultado de instalación (${INSTALL_TIMEOUT_MS / 1000}s)")
+                    CommandResult(
+                        "error",
+                        "Timeout esperando resultado de instalación (${INSTALL_TIMEOUT_MS / 1000}s)"
+                    )
                 }
+            apkFile.delete()
+            result
         }
 
     // ──────────────────────────────────────────────────────────────────────────

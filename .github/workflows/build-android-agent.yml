@@ -34,17 +34,6 @@ jobs:
         working-directory: android-agent
         run: chmod +x gradlew
 
-      - name: Download Gradle wrapper jar
-        working-directory: android-agent
-        run: |
-          mkdir -p gradle/wrapper
-          curl -fsSL \
-            "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar" \
-            -o gradle/wrapper/gradle-wrapper.jar || \
-          wget -q \
-            "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar" \
-            -O gradle/wrapper/gradle-wrapper.jar
-
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v3
 
