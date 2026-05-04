@@ -28,6 +28,11 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val timeFmt = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
+    companion object {
+        /** Device is considered offline if no heartbeat received within this window. */
+        private const val OFFLINE_THRESHOLD_MS = 2 * 60 * 1_000L  // 2 minutes
+    }
+
     private val refreshRunnable = object : Runnable {
         override fun run() {
             refreshStats()
@@ -89,10 +94,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshStats() {
         val lastHbMs = MdmAgentStats.lastHeartbeatMs.get()
-        val heartbeatText = if (lastHbMs == 0L) {
-            "Esperando primer heartbeat…"
-        } else {
-            timeFmt.format(Date(lastHbMs))
+        val now = System.currentTimeMillis()
+
+        // Determine connectivity state based on heartbeat freshness.
+        // A device is considered offline if:
+        //   - No heartbeat has been sent yet (service just started), OR
+        //   - The last heartbeat was more than OFFLINE_THRESHOLD_MS ago
+        //     (e.g. the server is unreachable or the network dropped).
+        val isOnline = lastHbMs > 0L && (now - lastHbMs) < OFFLINE_THRESHOLD_MS
+
+        updateStatusIndicator(isOnline)
+
+        val heartbeatText = when {
+            lastHbMs == 0L -> "Esperando primer heartbeat…"
+            isOnline -> timeFmt.format(Date(lastHbMs))
+            else -> "${timeFmt.format(Date(lastHbMs))} (sin señal)"
         }
         setRow(binding.rowHeartbeat, "Último heartbeat", heartbeatText)
 
@@ -103,6 +119,22 @@ class MainActivity : AppCompatActivity() {
         val lastStatus = MdmAgentStats.lastCommandStatus
         val lastCmdText = if (lastCmd == "—") "—" else "$lastCmd → $lastStatus"
         setRow(binding.rowLastCommand, "Último comando", lastCmdText)
+    }
+
+    /**
+     * Updates the status dot color and label based on real heartbeat freshness.
+     * Online  = green dot + "Dispositivo Gestionado"
+     * Offline = red dot + "Desconectado"
+     */
+    private fun updateStatusIndicator(isOnline: Boolean) {
+        val dotColor = if (isOnline) R.color.success else R.color.error
+        val statusLabel = if (isOnline) R.string.status_online else R.string.status_offline
+        val textColor = if (isOnline)
+            getColor(R.color.success) else getColor(R.color.error)
+
+        binding.statusDot.background.setTint(getColor(dotColor))
+        binding.statusText.setText(statusLabel)
+        binding.statusText.setTextColor(textColor)
     }
 
     // ──────────────────────────────────────────────────────────────────────────
