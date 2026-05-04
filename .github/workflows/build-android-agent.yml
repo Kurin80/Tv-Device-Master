@@ -35,6 +35,16 @@ jobs:
         with:
           packages: 'tools platform-tools platforms;android-34 build-tools;34.0.0'
 
+      # Gradle / AGP siguen mirando ANDROID_HOME en muchos setups; setup-android define ANDROID_SDK_ROOT
+      - name: Export ANDROID_HOME for Gradle
+        shell: bash
+        run: |
+          if [ -z "${ANDROID_SDK_ROOT:-}" ]; then
+            echo "::error::ANDROID_SDK_ROOT no esta definido tras setup-android"
+            exit 1
+          fi
+          echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "${GITHUB_ENV}"
+
       - name: Make gradlew executable
         working-directory: android-agent
         run: chmod +x gradlew
