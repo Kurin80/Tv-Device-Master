@@ -210,9 +210,8 @@ class CommandExecutor(private val context: Context) {
         return try {
             val apkFile = ApkInstaller.download(context, url)
             if (isDeviceOwner) {
+                // installSilent blocks until PackageInstaller delivers STATUS_SUCCESS or failure
                 ApkInstaller.installSilent(context, apkFile)
-                // PackageInstaller session commits asynchronously; result delivered via broadcast.
-                CommandResult("success", "Instalación silenciosa iniciada (Device Owner)")
             } else {
                 withContext(Dispatchers.Main) {
                     ApkInstaller.installWithIntent(context, apkFile)
@@ -232,11 +231,8 @@ class CommandExecutor(private val context: Context) {
         }
         return try {
             if (isDeviceOwner) {
-                withContext(Dispatchers.IO) {
-                    ApkInstaller.uninstallSilent(context, packageName)
-                }
-                // PackageInstaller.uninstall() is async; result delivered via PendingIntent broadcast.
-                CommandResult("success", "Desinstalación silenciosa iniciada (Device Owner) para $packageName")
+                // uninstallSilent blocks until PackageInstaller delivers STATUS_SUCCESS or failure
+                ApkInstaller.uninstallSilent(context, packageName)
             } else {
                 withContext(Dispatchers.Main) {
                     val intent = Intent(Intent.ACTION_DELETE).apply {

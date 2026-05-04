@@ -88,14 +88,16 @@ class MdmPollingService : LifecycleService() {
         deviceToken = token
         serverUrl = url
 
-        // Guard: only start loops if not already running (handles multiple onStartCommand calls)
+        // Guard: only start loops if not already running (handles multiple onStartCommand calls).
+        // Launch on Dispatchers.IO — synchronous OkHttp calls must not run on the main thread
+        // (NetworkOnMainThreadException) and must not block the UI thread (ANR risk).
         if (heartbeatJob == null || heartbeatJob?.isActive == false) {
-            heartbeatJob = lifecycleScope.launch { heartbeatLoop() }
-            Log.d(TAG, "Heartbeat loop started")
+            heartbeatJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { heartbeatLoop() }
+            Log.d(TAG, "Heartbeat loop started on IO dispatcher")
         }
         if (commandJob == null || commandJob?.isActive == false) {
-            commandJob = lifecycleScope.launch { commandLoop() }
-            Log.d(TAG, "Command loop started")
+            commandJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { commandLoop() }
+            Log.d(TAG, "Command loop started on IO dispatcher")
         }
 
         return START_STICKY

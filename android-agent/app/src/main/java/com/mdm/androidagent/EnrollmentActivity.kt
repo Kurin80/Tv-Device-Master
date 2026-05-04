@@ -107,17 +107,41 @@ class EnrollmentActivity : AppCompatActivity() {
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    analyzer
-                )
+                val selector = chooseCameraSelector(cameraProvider)
+                cameraProvider.bindToLifecycle(this, selector, preview, analyzer)
             } catch (e: Exception) {
                 Log.e(TAG, "Camera bind failed", e)
                 showError("No se pudo acceder a la cámara: ${e.message}")
             }
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    /**
+     * Picks the best available camera for QR scanning.
+     *
+     * Priority: back camera → front camera → any available camera.
+     * This ensures enrollment works on Android TV boxes and devices
+     * with USB webcams that don't expose a "back" camera lens.
+     */
+    private fun chooseCameraSelector(
+        cameraProvider: ProcessCameraProvider
+    ): CameraSelector {
+        return when {
+            cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) ->
+                CameraSelector.DEFAULT_BACK_CAMERA
+            cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) ->
+                CameraSelector.DEFAULT_FRONT_CAMERA
+            else -> {
+                // Last resort: accept any camera reported by the system (USB webcams, etc.)
+                val available = cameraProvider.availableCameraInfos
+                if (available.isEmpty()) throw Exception("No hay ninguna cámara disponible en este dispositivo")
+                Log.w(TAG, "No standard camera found; using first available of ${available.size}")
+                // Build a selector that matches the first available camera by index
+                CameraSelector.Builder()
+                    .addCameraFilter { cameras -> cameras.take(1) }
+                    .build()
+            }
+        }
     }
 
     @androidx.annotation.OptIn(ExperimentalGetImage::class)
