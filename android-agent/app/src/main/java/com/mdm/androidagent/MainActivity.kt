@@ -2,6 +2,8 @@ package com.mdm.androidagent
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -9,19 +11,29 @@ import com.mdm.androidagent.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.Timer
-import java.util.TimerTask
 
 /**
  * Main activity — displayed when the device is already enrolled.
- * Shows agent status, last heartbeat, and command count.
- * Redirects to EnrollmentActivity if not yet enrolled.
+ *
+ * Shows real-time agent stats from MdmAgentStats (updated by MdmPollingService):
+ *   - Last heartbeat timestamp
+ *   - Commands executed count
+ *   - Last command + its result status
+ *
+ * Polls MdmAgentStats every 5 s via a Handler — no service binding required.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private var uptimeTimer: Timer? = null
+    private val handler = Handler(Looper.getMainLooper())
     private val timeFmt = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            refreshStats()
+            handler.postDelayed(this, 5_000L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,20 +47,28 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Start the polling service if not already running
         MdmPollingService.start(this)
 
-        populateDeviceInfo()
+        populateStaticInfo()
         setupUnenrollButton()
-        startUptimeRefresh()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        uptimeTimer?.cancel()
+    override fun onResume() {
+        super.onResume()
+        refreshStats()
+        handler.postDelayed(refreshRunnable, 5_000L)
     }
 
-    private fun populateDeviceInfo() {
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(refreshRunnable)
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Static device info (changes only on re-enroll)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private fun populateStaticInfo() {
         val name = MdmStorage.getDeviceName(this) ?: "Desconocido"
         val url = MdmStorage.getServerUrl(this) ?: "—"
         val id = MdmStorage.getDeviceId(this)?.take(8)?.let { "$it…" } ?: "—"
@@ -57,15 +77,37 @@ class MainActivity : AppCompatActivity() {
         setRow(binding.rowServerUrl, "Servidor", url)
         setRow(binding.rowDeviceId, "ID", id)
 
-        setRow(binding.rowHeartbeat, "Último heartbeat", "Iniciando…")
+        // Initialize dynamic rows
+        setRow(binding.rowHeartbeat, "Último heartbeat", "Iniciando servicio…")
         setRow(binding.rowCommands, "Comandos ejecutados", "0")
         setRow(binding.rowLastCommand, "Último comando", "—")
     }
 
-    private fun setRow(rowView: android.view.View, label: String, value: String) {
-        rowView.findViewById<TextView>(R.id.rowLabel)?.text = label
-        rowView.findViewById<TextView>(R.id.rowValue)?.text = value
+    // ──────────────────────────────────────────────────────────────────────────
+    // Live stats from MdmAgentStats singleton (updated by the service)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private fun refreshStats() {
+        val lastHbMs = MdmAgentStats.lastHeartbeatMs.get()
+        val heartbeatText = if (lastHbMs == 0L) {
+            "Esperando primer heartbeat…"
+        } else {
+            timeFmt.format(Date(lastHbMs))
+        }
+        setRow(binding.rowHeartbeat, "Último heartbeat", heartbeatText)
+
+        val count = MdmAgentStats.commandsExecuted.get()
+        setRow(binding.rowCommands, "Comandos ejecutados", count.toString())
+
+        val lastCmd = MdmAgentStats.lastCommandDesc
+        val lastStatus = MdmAgentStats.lastCommandStatus
+        val lastCmdText = if (lastCmd == "—") "—" else "$lastCmd → $lastStatus"
+        setRow(binding.rowLastCommand, "Último comando", lastCmdText)
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Unenroll
+    // ──────────────────────────────────────────────────────────────────────────
 
     private fun setupUnenrollButton() {
         binding.btnUnenroll.setOnClickListener {
@@ -73,7 +115,7 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("Desinscribir dispositivo")
                 .setMessage(
                     "El dispositivo dejará de ser gestionado por MDM.\n\n" +
-                    "¿Confirmar?"
+                    "Para volver a inscribirlo tendrás que escanear un nuevo QR."
                 )
                 .setPositiveButton("Desinscribir") { _, _ -> unenroll() }
                 .setNegativeButton("Cancelar", null)
@@ -82,6 +124,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun unenroll() {
+        handler.removeCallbacks(refreshRunnable)
         MdmPollingService.stop(this)
         MdmStorage.clear(this)
         startActivity(Intent(this, EnrollmentActivity::class.java).apply {
@@ -90,18 +133,12 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun startUptimeRefresh() {
-        // Update "last heartbeat" timestamp every 5 s from the shared service
-        // (simple approximation — real implementation would use a BroadcastReceiver
-        //  or LiveData from the service)
-        uptimeTimer = Timer()
-        uptimeTimer?.schedule(object : TimerTask() {
-            override fun run() {
-                runOnUiThread {
-                    val now = timeFmt.format(Date())
-                    setRow(binding.rowHeartbeat, "Último heartbeat", now)
-                }
-            }
-        }, 0, 30_000)
+    // ──────────────────────────────────────────────────────────────────────────
+    // Helper
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private fun setRow(rowView: android.view.View, label: String, value: String) {
+        rowView.findViewById<TextView>(R.id.rowLabel)?.text = label
+        rowView.findViewById<TextView>(R.id.rowValue)?.text = value
     }
 }

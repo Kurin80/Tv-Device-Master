@@ -2,24 +2,53 @@ package com.mdm.androidagent
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 /**
  * Persistent storage for device enrollment state.
- * Uses regular SharedPreferences (data is already protected by Android's app sandbox).
+ *
+ * Uses EncryptedSharedPreferences on API 23+ (Marshmallow) to protect the
+ * device token at rest. Falls back to plain SharedPreferences on API 21-22
+ * where the Jetpack Security library is unavailable.
+ *
+ * NOTE: The device token is a secret — treat it like a password.
  */
 object MdmStorage {
 
-    private const val PREFS_NAME = "mdm_agent_prefs"
+    private const val PLAIN_PREFS_NAME = "mdm_agent_prefs"
+    private const val ENCRYPTED_PREFS_NAME = "mdm_agent_secure_prefs"
+
     private const val KEY_DEVICE_TOKEN = "device_token"
     private const val KEY_DEVICE_ID = "device_id"
     private const val KEY_SERVER_URL = "server_url"
     private const val KEY_DEVICE_NAME = "device_name"
 
-    private fun prefs(context: Context): SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private fun prefs(context: Context): SharedPreferences {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                EncryptedSharedPreferences.create(
+                    context,
+                    ENCRYPTED_PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (_: Exception) {
+                // Fallback: key store unavailable (emulator or restricted device)
+                context.getSharedPreferences(PLAIN_PREFS_NAME, Context.MODE_PRIVATE)
+            }
+        } else {
+            // API 21-22: Jetpack Security not available
+            context.getSharedPreferences(PLAIN_PREFS_NAME, Context.MODE_PRIVATE)
+        }
+    }
 
-    fun isEnrolled(context: Context): Boolean =
-        getDeviceToken(context) != null
+    fun isEnrolled(context: Context): Boolean = getDeviceToken(context) != null
 
     fun save(
         context: Context,

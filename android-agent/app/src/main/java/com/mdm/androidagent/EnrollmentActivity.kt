@@ -206,8 +206,14 @@ class EnrollmentActivity : AppCompatActivity() {
                     ?: throw Exception("El servidor no devolvió un token. Actualiza el servidor MDM.")
                 val deviceId = device.getString("id")
 
+                // Derive serverUrl preserving protocol, host and port (if non-standard)
                 val url = URL(enrollUrl)
-                val serverUrl = "${url.protocol}://${url.host}"
+                val port = url.port
+                val serverUrl = if (port == -1 || port == url.defaultPort) {
+                    "${url.protocol}://${url.host}"
+                } else {
+                    "${url.protocol}://${url.host}:$port"
+                }
 
                 MdmStorage.save(this@EnrollmentActivity, deviceToken, deviceId, serverUrl, deviceName)
 

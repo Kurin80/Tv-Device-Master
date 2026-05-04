@@ -10,7 +10,9 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -23,9 +25,12 @@ import java.util.concurrent.TimeUnit
 /**
  * Foreground service that keeps the MDM agent alive.
  *
- * Two independent coroutine loops:
+ * Two independent coroutine loops (guarded so they only start once per service lifecycle):
  *   - Heartbeat: POST /api/agent/heartbeat every 30 s
  *   - Commands:  GET /api/agent/commands every 10 s, execute, POST result
+ *
+ * START_STICKY ensures Android restarts the service if killed (e.g. low memory).
+ * BootReceiver re-starts the service after device reboot.
  */
 class MdmPollingService : LifecycleService() {
 
@@ -58,6 +63,10 @@ class MdmPollingService : LifecycleService() {
     private lateinit var serverUrl: String
     private lateinit var deviceToken: String
 
+    // Loop-guard: ensures coroutines are only launched once per service lifecycle
+    private var heartbeatJob: Job? = null
+    private var commandJob: Job? = null
+
     override fun onCreate() {
         super.onCreate()
         startForeground(MdmApplication.NOTIFICATION_ID, buildNotification())
@@ -79,11 +88,26 @@ class MdmPollingService : LifecycleService() {
         deviceToken = token
         serverUrl = url
 
-        // Only start loops if not already running
-        lifecycleScope.launch { heartbeatLoop() }
-        lifecycleScope.launch { commandLoop() }
+        // Guard: only start loops if not already running (handles multiple onStartCommand calls)
+        if (heartbeatJob == null || heartbeatJob?.isActive == false) {
+            heartbeatJob = lifecycleScope.launch { heartbeatLoop() }
+            Log.d(TAG, "Heartbeat loop started")
+        }
+        if (commandJob == null || commandJob?.isActive == false) {
+            commandJob = lifecycleScope.launch { commandLoop() }
+            Log.d(TAG, "Command loop started")
+        }
 
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        heartbeatJob?.cancel()
+        commandJob?.cancel()
+        heartbeatJob = null
+        commandJob = null
+        Log.d(TAG, "Service destroyed — loops cancelled")
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -91,9 +115,11 @@ class MdmPollingService : LifecycleService() {
     // ──────────────────────────────────────────────────────────────────────────
 
     private suspend fun heartbeatLoop() {
-        while (true) {
+        // First heartbeat immediately, then every 30 s
+        while (isActive) {
             try {
                 sendHeartbeat()
+                MdmAgentStats.lastHeartbeatMs.set(System.currentTimeMillis())
             } catch (e: Exception) {
                 Log.w(TAG, "Heartbeat failed: ${e.message}")
             }
@@ -121,7 +147,7 @@ class MdmPollingService : LifecycleService() {
     // ──────────────────────────────────────────────────────────────────────────
 
     private suspend fun commandLoop() {
-        while (true) {
+        while (isActive) {
             try {
                 pollAndExecute()
             } catch (e: Exception) {
@@ -150,12 +176,21 @@ class MdmPollingService : LifecycleService() {
             val command = cmd.getString("command")
             val param = if (cmd.has("param") && !cmd.isNull("param")) cmd.getString("param") else null
 
-            Log.d(TAG, "Executing command: $command id=$id param=$param")
+            Log.d(TAG, "Executing: $command id=$id param=$param")
+
+            // Update live stats before execution
+            val desc = "$command${if (param != null) " ($param)" else ""}"
+            MdmAgentStats.lastCommandDesc = desc
+
             val result = try {
                 executor.execute(command, param)
             } catch (e: Exception) {
                 CommandResult("error", e.message ?: "Error inesperado")
             }
+
+            // Update stats after execution
+            MdmAgentStats.commandsExecuted.incrementAndGet()
+            MdmAgentStats.lastCommandStatus = result.status
 
             reportResult(id, result)
         }
@@ -166,9 +201,7 @@ class MdmPollingService : LifecycleService() {
             val body = JSONObject().apply {
                 put("status", result.status)
                 put("response", result.response)
-                result.packages?.let { pkgs ->
-                    put("packages", JSONArray(pkgs))
-                }
+                result.packages?.let { pkgs -> put("packages", JSONArray(pkgs)) }
             }
             val request = Request.Builder()
                 .url("$serverUrl/api/agent/commands/$commandId/result")
@@ -176,7 +209,7 @@ class MdmPollingService : LifecycleService() {
                 .post(body.toString().toRequestBody(json))
                 .build()
             http.newCall(request).execute().use { response ->
-                Log.d(TAG, "Result reported for $commandId: ${response.code}")
+                Log.d(TAG, "Result for $commandId: ${response.code}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to report result for $commandId: ${e.message}")
@@ -195,14 +228,10 @@ class MdmPollingService : LifecycleService() {
             if (ip == 0) return null
             String.format(
                 "%d.%d.%d.%d",
-                ip and 0xff,
-                ip shr 8 and 0xff,
-                ip shr 16 and 0xff,
-                ip shr 24 and 0xff
+                ip and 0xff, ip shr 8 and 0xff,
+                ip shr 16 and 0xff, ip shr 24 and 0xff
             )
-        } catch (_: Exception) {
-            null
-        }
+        } catch (_: Exception) { null }
     }
 
     private fun buildNotification(): Notification {

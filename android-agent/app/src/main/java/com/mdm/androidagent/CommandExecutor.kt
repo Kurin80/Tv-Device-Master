@@ -195,12 +195,15 @@ class CommandExecutor(private val context: Context) {
             val apkFile = ApkInstaller.download(context, url)
             if (isDeviceOwner) {
                 ApkInstaller.installSilent(context, apkFile)
+                // PackageInstaller session commits asynchronously; result delivered via broadcast.
+                CommandResult("success", "Instalación silenciosa iniciada (Device Owner)")
             } else {
                 withContext(Dispatchers.Main) {
                     ApkInstaller.installWithIntent(context, apkFile)
                 }
+                // User must confirm the system install dialog; we cannot await the outcome.
+                CommandResult("success", "Diálogo de instalación mostrado al usuario")
             }
-            CommandResult("success", "APK instalado desde $url")
         } catch (e: Exception) {
             Log.e(TAG, "installApk error", e)
             CommandResult("error", e.message ?: "Error al instalar APK")
@@ -216,6 +219,8 @@ class CommandExecutor(private val context: Context) {
                 withContext(Dispatchers.IO) {
                     ApkInstaller.uninstallSilent(context, packageName)
                 }
+                // PackageInstaller.uninstall() is async; result delivered via PendingIntent broadcast.
+                CommandResult("success", "Desinstalación silenciosa iniciada (Device Owner) para $packageName")
             } else {
                 withContext(Dispatchers.Main) {
                     val intent = Intent(Intent.ACTION_DELETE).apply {
@@ -224,8 +229,9 @@ class CommandExecutor(private val context: Context) {
                     }
                     context.startActivity(intent)
                 }
+                // User must confirm the system uninstall dialog; we cannot await the outcome.
+                CommandResult("success", "Diálogo de desinstalación mostrado al usuario para $packageName")
             }
-            CommandResult("success", "App $packageName desinstalada")
         } catch (e: Exception) {
             CommandResult("error", e.message ?: "Error al desinstalar $packageName")
         }
