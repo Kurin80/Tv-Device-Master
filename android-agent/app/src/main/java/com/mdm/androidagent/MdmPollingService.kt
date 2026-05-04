@@ -12,8 +12,9 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.isActive
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -118,7 +119,7 @@ class MdmPollingService : LifecycleService() {
 
     private suspend fun heartbeatLoop() {
         // First heartbeat immediately, then every 30 s
-        while (isActive) {
+        while (coroutineContext.isActive) {
             try {
                 sendHeartbeat()
                 MdmAgentStats.lastHeartbeatMs.set(System.currentTimeMillis())
@@ -149,7 +150,7 @@ class MdmPollingService : LifecycleService() {
     // ──────────────────────────────────────────────────────────────────────────
 
     private suspend fun commandLoop() {
-        while (isActive) {
+        while (coroutineContext.isActive) {
             try {
                 pollAndExecute()
             } catch (e: Exception) {

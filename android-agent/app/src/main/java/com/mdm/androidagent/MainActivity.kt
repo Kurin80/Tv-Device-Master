@@ -4,10 +4,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.mdm.androidagent.databinding.ActivityMainBinding
+import com.mdm.androidagent.databinding.RowInfoBinding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -169,8 +169,8 @@ class MainActivity : AppCompatActivity() {
     // Helper
     // ──────────────────────────────────────────────────────────────────────────
 
-    private fun setRow(rowView: android.view.View, label: String, value: String) {
-        rowView.findViewById<TextView>(R.id.rowLabel)?.text = label
-        rowView.findViewById<TextView>(R.id.rowValue)?.text = value
+    private fun setRow(row: RowInfoBinding, label: String, value: String) {
+        row.rowLabel.text = label
+        row.rowValue.text = value
     }
 }

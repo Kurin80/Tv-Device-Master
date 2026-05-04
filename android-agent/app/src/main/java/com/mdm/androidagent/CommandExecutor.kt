@@ -128,23 +128,15 @@ class CommandExecutor(private val context: Context) {
         return try {
             val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
 
-            // Step 1: wake the screen
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                pm.wakeUp(
-                    android.os.SystemClock.uptimeMillis(),
-                    PowerManager.WAKE_REASON_APPLICATION,
-                    TAG
-                )
-            } else {
-                val wl = pm.newWakeLock(
-                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK
-                            or PowerManager.ACQUIRE_CAUSES_WAKEUP
-                            or PowerManager.ON_AFTER_RELEASE,
-                    "$TAG:screenOn"
-                )
-                wl.acquire(3_000L)
-                wl.release()
-            }
+            // Despertar pantalla (SCREEN_BRIGHT_WAKE_LOCK está deprecado pero sigue siendo lo más portable en TV / agente en segundo plano).
+            val wl = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+                    or PowerManager.ACQUIRE_CAUSES_WAKEUP
+                    or PowerManager.ON_AFTER_RELEASE,
+                "$TAG:screenOn"
+            )
+            wl.acquire(3_000L)
+            wl.release()
 
             // Step 2: dismiss keyguard so the screen is actually usable.
             // KeyguardManager.newKeyguardLock() is deprecated but is the only
