@@ -54,11 +54,27 @@ jobs:
 
       - name: Build Debug APK
         working-directory: android-agent
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle-assemble-debug.log
 
       - name: Build Release APK (unsigned)
         working-directory: android-agent
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee gradle-assemble-release.log
+
+      - name: Gradle log tail (on failure)
+        if: failure()
+        working-directory: android-agent
+        shell: bash
+        run: |
+          echo "---- assembleDebug (tail) ----"
+          tail -n 120 gradle-assemble-debug.log 2>/dev/null || true
+          echo "---- assembleRelease (tail) ----"
+          tail -n 120 gradle-assemble-release.log 2>/dev/null || true
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4

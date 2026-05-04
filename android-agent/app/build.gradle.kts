@@ -40,6 +40,9 @@ android {
 }
 
 dependencies {
+    // CameraX + ML Kit suelen arrastrar stubs distintos de ListenableFuture → fallo D8 "Duplicate class"
+    implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
